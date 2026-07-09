@@ -1,0 +1,9 @@
+# supabase/config.toml
+# Gerado por `supabase init` — este arquivo só precisa da seção abaixo
+# adicionada manualmente (o resto o comando já cria sozinho).
+
+[functions.generate-miniature]
+# false = qualquer um pode chamar a função sem autenticação da Supabase.
+# Prático para testar agora; antes de divulgar o site pro público, veja a
+# nota sobre proteção no README.md.
+verify_jwt = false
