@@ -621,11 +621,17 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 .style-card:hover{transform:translateY(-2px);}
 .style-card.selected{border-color:var(--blue);}
 .style-thumb{
-  aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:34px;color:#fff;
+  aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:34px;color:#fff;position:relative;
 }
 .style-card-body{padding:12px 14px;}
 .style-card-body b{font-size:13px;display:block;margin-bottom:3px;}
 .style-card-body span{font-size:11px;color:var(--gray);}
+.style-card.coming-soon{opacity:.55;}
+.style-card.coming-soon:hover{transform:none;}
+.style-soon-badge{
+  position:absolute;top:8px;right:8px;background:rgba(0,0,0,.75);color:#fff;font-size:9.5px;font-weight:700;
+  padding:3px 8px;border-radius:var(--radius-full);letter-spacing:.03em;
+}
 
 .gen-stage{
   background:var(--card-dark);border-radius:var(--radius-md);aspect-ratio:1/1;max-width:420px;margin:0 auto;
@@ -1120,16 +1126,16 @@ const REVIEWS_POOL = [
    própria foto enviada, com um selinho de teste) para você validar o fluxo.
    ========================================================================= */
 
-const MINIATURE_API_ENDPOINT = ''; // <- cole aqui a URL do seu Worker/função quando publicar, ex: 'https://mobu-ai.SEU-USUARIO.workers.dev/generate'
+const MINIATURE_API_ENDPOINT = 'https://lkrucvfruwkjbrfcdvpm.supabase.co/functions/v1/generate-miniature';
 
 // Catálogo de estilos exibido ao cliente. O "id" tem que bater com a chave
 // correspondente no objeto STYLE_PROMPTS do backend (cloudflare-worker.js) —
 // é lá que entram os prompts reais que você vai enviar.
 const AI_STYLES = [
-  { id: 'funko', name: 'Estilo Funko', tag: 'Boneco colecionável, cabeça grande e olhos redondos', emoji: '🧑‍🎨', color1: '#3B82F6', color2: '#1d4ed8' },
-  { id: 'pixar', name: 'Estilo Pixar', tag: 'Animação 3D estilizada, expressiva e colorida', emoji: '🎬', color1: '#f97316', color2: '#c2410c' },
-  { id: 'chibi', name: 'Chibi', tag: 'Proporções fofas, traço simples e divertido', emoji: '✨', color1: '#16a34a', color2: '#166534' },
-  { id: 'realista', name: 'Hiper-realista', tag: 'Fidelidade máxima aos detalhes originais', emoji: '🔍', color1: '#5B5B5B', color2: '#2a2a2a' },
+  { id: 'funko', name: 'Estilo Funko', tag: 'Boneco colecionável, cabeça grande e olhos redondos', emoji: '🧑‍🎨', color1: '#3B82F6', color2: '#1d4ed8', available: true },
+  { id: 'pixar', name: 'Estilo Pixar', tag: 'Animação 3D estilizada, expressiva e colorida', emoji: '🎬', color1: '#f97316', color2: '#c2410c', available: false },
+  { id: 'chibi', name: 'Chibi', tag: 'Proporções fofas, traço simples e divertido', emoji: '✨', color1: '#16a34a', color2: '#166534', available: false },
+  { id: 'realista', name: 'Hiper-realista', tag: 'Fidelidade máxima aos detalhes originais', emoji: '🔍', color1: '#5B5B5B', color2: '#2a2a2a', available: false },
 ];
 
 const AI_SIZES = [
@@ -1283,8 +1289,11 @@ function renderAiStep() {
       <p style="color:var(--gray);font-size:13.5px;margin-bottom:20px;">A prévia abaixo é ilustrativa — o resultado final é gerado a partir das suas fotos.</p>
       <div class="style-grid">
         ${AI_STYLES.map(s => `
-          <button class="style-card ${aiState.styleId === s.id ? 'selected' : ''}" data-action="ai-pick-style" data-style="${s.id}">
-            <div class="style-thumb" style="background:linear-gradient(160deg,${s.color1},${s.color2})">${s.emoji}</div>
+          <button class="style-card ${aiState.styleId === s.id ? 'selected' : ''} ${!s.available ? 'coming-soon' : ''}" data-action="ai-pick-style" data-style="${s.id}">
+            <div class="style-thumb" style="background:linear-gradient(160deg,${s.color1},${s.color2})">
+              ${s.emoji}
+              ${!s.available ? '<span class="style-soon-badge">Em breve</span>' : ''}
+            </div>
             <div class="style-card-body"><b>${s.name}</b><span>${s.tag}</span></div>
           </button>
         `).join('')}
@@ -2204,7 +2213,13 @@ document.addEventListener('click', (e) => {
     case 'ai-trigger-upload': qs('#ai-file-input').click(); break;
     case 'ai-remove-image': aiState.images.splice(Number(t.dataset.idx), 1); renderAiStep(); break;
     case 'ai-goto-style': aiState.step = 2; renderAiStep(); break;
-    case 'ai-pick-style': aiState.styleId = t.dataset.style; renderAiStep(); break;
+    case 'ai-pick-style': {
+      const style = AI_STYLES.find(s => s.id === t.dataset.style);
+      if (!style.available) { toast('Em breve — esse estilo ainda não está disponível'); break; }
+      aiState.styleId = t.dataset.style;
+      renderAiStep();
+      break;
+    }
     case 'ai-back-step': aiState.step = 1; renderAiStep(); break;
     case 'ai-goto-generate': aiState.step = 3; aiState.previewImage = null; renderAiStep(); break;
     case 'ai-back-style': aiState.step = 2; aiState.previewImage = null; renderAiStep(); break;
