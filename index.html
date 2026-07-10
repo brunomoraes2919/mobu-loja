@@ -693,13 +693,21 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 .ai-finish-actions{display:flex;gap:10px;}
 
 .ship-option{
-  display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light);
+  display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border-light);
 }
 .ship-option:last-child{border-bottom:0;}
+.ship-option-info{flex:1;min-width:0;}
 .ship-option b{font-size:13.5px;}
+.ship-logo{
+  width:34px;height:34px;flex-shrink:0;border-radius:var(--radius);border:1px solid var(--border-light);
+  background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.ship-logo img{width:100%;height:100%;object-fit:contain;padding:4px;}
+.ship-logo-fallback{display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:var(--gray-light);}
+.ship-logo-fallback svg{width:18px;height:18px;}
 .ship-company{color:var(--gray-light);font-weight:400;font-size:12px;}
 .ship-time{font-size:11.5px;color:var(--gray);margin-top:2px;}
-.ship-price{font-family:var(--font-mono);font-size:14px;font-weight:500;}
+.ship-price{font-family:var(--font-mono);font-size:14px;font-weight:500;flex-shrink:0;}
 .ship-free{color:var(--green);font-weight:700;}
 .ship-hint{font-size:12.5px;color:var(--gray);margin-top:12px;}
 .ship-loading{font-size:12.5px;color:var(--gray);margin-top:12px;}
@@ -1212,10 +1220,22 @@ async function fetchShippingOptions(cep, pkg) {
     ],
   };
 }
+const GENERIC_CARRIER_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="7" width="14" height="10"/><path d="M15 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="1.7"/><circle cx="17.5" cy="19" r="1.7"/></svg>`;
+
+function carrierLogoHtml(logoUrl) {
+  if (!logoUrl) return `<div class="ship-logo"><span class="ship-logo-fallback">${GENERIC_CARRIER_ICON}</span></div>`;
+  return `
+    <div class="ship-logo">
+      <img src="${logoUrl}" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <span class="ship-logo-fallback" style="display:none">${GENERIC_CARRIER_ICON}</span>
+    </div>`;
+}
+
 function shippingResultHtml(result, freeShippingEligible) {
   return result.options.map(o => `
     <div class="ship-option">
-      <div>
+      ${carrierLogoHtml(o.logoUrl)}
+      <div class="ship-option-info">
         <b>${o.name}</b>${o.company ? ` <span class="ship-company">· ${o.company}</span>` : ''}
         <div class="ship-time">${o.deliveryTime} ${o.deliveryTime == 1 ? 'dia útil' : 'dias úteis'}</div>
       </div>
