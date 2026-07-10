@@ -676,11 +676,38 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 
 .ai-cart-thumb{width:100%;height:100%;object-fit:cover;border-radius:var(--radius);}
 
-.ai-finish-grid{display:grid;grid-template-columns:220px 1fr;gap:32px;align-items:flex-start;}
-.ai-finish-grid .size-grid{min-width:0;}
+.ai-finish-grid{display:grid;grid-template-columns:280px 1fr;gap:32px;align-items:flex-start;}
+.ai-finish-preview{position:sticky;top:calc(var(--header-h) + 16px);}
+.ai-finish-preview .gen-stage{aspect-ratio:3/4;}
+.ai-finish-style-tag{
+  display:flex;align-items:center;gap:6px;margin-top:12px;font-size:12.5px;color:var(--gray);
+  background:var(--card-light);padding:9px 12px;border-radius:var(--radius);
+}
+.ai-finish-style-tag svg{width:14px;height:14px;color:var(--green);flex-shrink:0;}
+
+.ai-finish-config{display:flex;flex-direction:column;gap:16px;min-width:0;}
+.ai-finish-card{background:var(--card-light);border-radius:var(--radius-md);padding:22px;}
+.ai-finish-title{font-family:var(--font-display);font-size:16px;margin-bottom:16px;}
+.ai-finish-row{display:flex;align-items:center;justify-content:space-between;margin-top:18px;font-size:13px;font-weight:600;}
+.ai-finish-summary{background:#fff;border:1.5px solid var(--border-light);}
+.ai-finish-actions{display:flex;gap:10px;}
+
+.ship-option{
+  display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light);
+}
+.ship-option:last-child{border-bottom:0;}
+.ship-option b{font-size:13.5px;}
+.ship-company{color:var(--gray-light);font-weight:400;font-size:12px;}
+.ship-time{font-size:11.5px;color:var(--gray);margin-top:2px;}
+.ship-price{font-family:var(--font-mono);font-size:14px;font-weight:500;}
+.ship-free{color:var(--green);font-weight:700;}
+.ship-hint{font-size:12.5px;color:var(--gray);margin-top:12px;}
+.ship-loading{font-size:12.5px;color:var(--gray);margin-top:12px;}
+.ship-estimate-note{font-size:10.5px;color:var(--gray-light);margin-top:10px;font-style:italic;}
+
 @media (max-width:640px){
   .ai-finish-grid{grid-template-columns:1fr;}
-  .ai-finish-grid .gen-stage{max-width:180px;margin:0 auto;}
+  .ai-finish-preview{position:static;max-width:260px;margin:0 auto;}
 }
 
 </style>
@@ -1055,6 +1082,7 @@ const PRODUCTS = [
     rating: 4.9, reviews: 128,
     desc: 'Sua ideia, sua cor, seu nome. Configure ao vivo abaixo e acompanhe exatamente como a peça vai sair da impressora — camada por camada, do jeito que só a MOBU faz.',
     specs: { 'Material': 'PLA premium', 'Dimensões': '15 × 7 × 0,4 cm', 'Peso': '~60g', 'Tempo de impressão': '2h30' },
+    pkg: { weight: 0.10, width: 18, height: 3, length: 10 },
   },
   {
     id: 'chaveiro-nome', name: 'Chaveiro Personalizado', cat: 'personalizado',
@@ -1062,6 +1090,7 @@ const PRODUCTS = [
     rating: 4.8, reviews: 342,
     desc: 'Leve um pedaço da sua ideia no bolso. Escolha a cor, escreva o nome e receba um chaveiro único — resistente ao dia a dia.',
     specs: { 'Material': 'PLA premium', 'Dimensões': '6 × 3 × 0,4 cm', 'Peso': '~12g', 'Tempo de impressão': '40min' },
+    pkg: { weight: 0.05, width: 12, height: 2, length: 8 },
   },
   {
     id: 'mini-pet', name: 'Miniatura Pet Personalizada', cat: 'miniaturas',
@@ -1069,6 +1098,7 @@ const PRODUCTS = [
     rating: 5.0, reviews: 76,
     desc: 'Envie uma foto do seu pet pelo WhatsApp após a compra e nossa equipe modela uma miniatura exclusiva — pronta para exibir ou pintar do seu jeito.',
     specs: { 'Material': 'PLA premium', 'Altura média': '8-10 cm', 'Peso': '~40g', 'Prazo': '7-10 dias úteis (modelagem sob medida)' },
+    pkg: { weight: 0.10, width: 12, height: 14, length: 12 },
   },
   {
     id: 'vaso-facetado', name: 'Vaso Geométrico Facetado', cat: 'decoracao',
@@ -1076,6 +1106,7 @@ const PRODUCTS = [
     rating: 4.7, reviews: 54,
     desc: 'Linhas retas, volume preciso. Um vaso que parece ter saído direto de um desenho técnico — perfeito para suculentas e arranjos secos.',
     specs: { 'Material': 'PLA premium', 'Dimensões': '12 × 12 × 14 cm', 'Peso': '~180g', 'Tempo de impressão': '6h' },
+    pkg: { weight: 0.25, width: 15, height: 17, length: 15 },
   },
   {
     id: 'luminaria-geo', name: 'Luminária Geométrica LED', cat: 'decoracao',
@@ -1083,6 +1114,7 @@ const PRODUCTS = [
     rating: 4.9, reviews: 31,
     desc: 'Luz que atravessa camadas. Acompanha fiação LED plug-and-play — é só encaixar e ligar na tomada.',
     specs: { 'Material': 'PLA translúcido', 'Dimensões': '16 × 16 × 20 cm', 'Peso': '~320g', 'Inclui': 'Módulo LED USB' },
+    pkg: { weight: 0.45, width: 19, height: 23, length: 19 },
   },
   {
     id: 'organizador-modular', name: 'Organizador de Mesa Modular', cat: 'organizacao',
@@ -1090,6 +1122,7 @@ const PRODUCTS = [
     rating: 4.6, reviews: 89,
     desc: 'Encaixa, empilha, organiza. Módulos combináveis para montar do jeito que sua mesa (ou sua cabeça) precisa.',
     specs: { 'Material': 'PETG', 'Dimensões': '10 × 10 × 6 cm por módulo', 'Peso': '~90g', 'Tempo de impressão': '3h' },
+    pkg: { weight: 0.15, width: 13, height: 9, length: 13 },
   },
   {
     id: 'suporte-celular', name: 'Suporte de Celular Articulado', cat: 'organizacao',
@@ -1097,6 +1130,7 @@ const PRODUCTS = [
     rating: 4.8, reviews: 203,
     desc: 'Ângulo ajustável, base emborrachada antiderrapante. Cabe na mesa de trabalho, na cozinha ou na cabeceira da cama.',
     specs: { 'Material': 'PETG', 'Dimensões': '9 × 8 × 11 cm', 'Peso': '~70g', 'Tempo de impressão': '2h' },
+    pkg: { weight: 0.15, width: 12, height: 14, length: 11 },
   },
   {
     id: 'miniatura-colecionavel', name: 'Miniatura Colecionável Cosplay', cat: 'cosplay',
@@ -1104,6 +1138,7 @@ const PRODUCTS = [
     rating: 4.7, reviews: 65,
     desc: 'Peça sob encomenda para quem leva o hobby a sério. Escala e cor personalizáveis — do RPG de mesa ao game favorito.',
     specs: { 'Material': 'PLA premium', 'Altura média': '10 cm', 'Peso': '~50g', 'Tempo de impressão': '4h' },
+    pkg: { weight: 0.12, width: 13, height: 15, length: 13 },
   },
   {
     id: 'porta-fones', name: 'Suporte para Fones de Ouvido', cat: 'organizacao',
@@ -1111,6 +1146,7 @@ const PRODUCTS = [
     rating: 4.5, reviews: 47,
     desc: 'Seu headset merece um lugar. Base antiderrapante e design minimalista que combina com qualquer setup.',
     specs: { 'Material': 'PLA premium', 'Dimensões': '10 × 10 × 22 cm', 'Peso': '~110g', 'Tempo de impressão': '3h30' },
+    pkg: { weight: 0.20, width: 13, height: 25, length: 13 },
   },
   {
     id: 'peca-tecnica', name: 'Peça Técnica Sob Medida', cat: 'tecnico',
@@ -1118,6 +1154,7 @@ const PRODUCTS = [
     rating: 5.0, reviews: 19,
     desc: 'Engrenagens, suportes, protótipos e peças de reposição. Envie o desenho técnico ou a peça quebrada e nós cotamos para você.',
     specs: { 'Material': 'PLA, PETG ou ABS', 'Tolerância': '± 0,1 mm', 'Prazo': 'Sob consulta' },
+    pkg: null, // sob consulta — sem dimensão fixa
   },
 ];
 
@@ -1144,6 +1181,49 @@ const REVIEWS_POOL = [
 
 const MINIATURE_API_ENDPOINT = 'https://lkrucvfruwkjbrfcdvpm.supabase.co/functions/v1/generate-miniature';
 
+// URL da função de cálculo de frete (SuperFrete). Publique a função
+// calculate-shipping na Supabase e cole a URL aqui, ex:
+// 'https://SEU_PROJECT_REF.supabase.co/functions/v1/calculate-shipping'
+const SHIPPING_API_ENDPOINT = 'https://lkrucvfruwkjbrfcdvpm.supabase.co/functions/v1/calculate-shipping';
+
+// Calcula o frete real via backend (SuperFrete). Se o endpoint ainda não
+// estiver configurado, cai num cálculo estimado local (mesma lógica de
+// antes) só para não travar a experiência enquanto você configura.
+async function fetchShippingOptions(cep, pkg) {
+  const isConfigured = SHIPPING_API_ENDPOINT && SHIPPING_API_ENDPOINT.startsWith('http');
+  if (isConfigured) {
+    const res = await fetch(SHIPPING_API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destinationCep: cep, package: pkg }),
+    });
+    if (!res.ok) throw new Error('shipping_failed');
+    const data = await res.json();
+    if (!data.options || !data.options.length) throw new Error('no_options');
+    return { options: data.options, estimated: false };
+  }
+  // fallback estimado (sem backend configurado ainda)
+  const days = 3 + (parseInt(cep[0]) % 5);
+  return {
+    estimated: true,
+    options: [
+      { name: 'PAC', company: 'Correios', price: 14.90 + pkg.weight * 8, deliveryTime: days + 2 },
+      { name: 'SEDEX', company: 'Correios', price: 24.90 + pkg.weight * 12, deliveryTime: days },
+    ],
+  };
+}
+function shippingResultHtml(result, freeShippingEligible) {
+  return result.options.map(o => `
+    <div class="ship-option">
+      <div>
+        <b>${o.name}</b>${o.company ? ` <span class="ship-company">· ${o.company}</span>` : ''}
+        <div class="ship-time">${o.deliveryTime} ${o.deliveryTime == 1 ? 'dia útil' : 'dias úteis'}</div>
+      </div>
+      <div class="ship-price">${freeShippingEligible ? '<span class="ship-free">Grátis</span>' : fmtPrice(o.price)}</div>
+    </div>
+  `).join('') + (result.estimated ? '<p class="ship-estimate-note">Valores estimados — conecte o SHIPPING_API_ENDPOINT para frete real.</p>' : '');
+}
+
 // Catálogo de estilos exibido ao cliente. O "id" tem que bater com a chave
 // correspondente no objeto STYLE_PROMPTS do backend (cloudflare-worker.js) —
 // é lá que entram os prompts reais que você vai enviar.
@@ -1155,9 +1235,9 @@ const AI_STYLES = [
 ];
 
 const AI_SIZES = [
-  { id: 'P', label: 'P', dim: '~8 cm de altura', price: 89.90 },
-  { id: 'M', label: 'M', dim: '~13 cm de altura', price: 149.90 },
-  { id: 'G', label: 'G', dim: '~19 cm de altura', price: 249.90 },
+  { id: 'P', label: 'P', dim: '~8 cm de altura', price: 89.90, pkg: { weight: 0.15, width: 12, height: 12, length: 12 } },
+  { id: 'M', label: 'M', dim: '~13 cm de altura', price: 149.90, pkg: { weight: 0.30, width: 16, height: 17, length: 16 } },
+  { id: 'G', label: 'G', dim: '~19 cm de altura', price: 249.90, pkg: { weight: 0.50, width: 20, height: 23, length: 20 } },
 ];
 
 let aiState = {
@@ -1169,11 +1249,16 @@ let aiState = {
   previewImage: null, // resultado (real ou de demonstração)
   isDemo: false,
   size: 'M',
-  color: 'branco',
   qty: 1,
+  shippingCep: '',
+  shippingResult: null,
+  calculatingShipping: false,
 };
 function resetAiState() {
-  aiState = { step: 1, images: [], consent: false, styleId: null, generating: false, previewImage: null, isDemo: false, size: 'M', color: 'branco', qty: 1 };
+  aiState = {
+    step: 1, images: [], consent: false, styleId: null, generating: false, previewImage: null,
+    isDemo: false, size: 'M', qty: 1, shippingCep: '', shippingResult: null, calculatingShipping: false,
+  };
 }
 
 // Redimensiona a imagem no navegador antes de enviar — payload menor, custo
@@ -1343,46 +1428,65 @@ function renderAiStep() {
 
   else if (aiState.step === 4) {
     const sizeObj = AI_SIZES.find(s => s.id === aiState.size);
+    const total = sizeObj.price * aiState.qty;
     panel.innerHTML = `
       <div class="ai-finish-grid">
-        <div class="gen-stage" style="max-width:220px;"><img src="${aiState.previewImage}"></div>
-        <div style="min-width:0;">
-          <h3 style="font-size:19px;margin-bottom:16px;">Escolha o tamanho</h3>
-          <div class="size-grid">
-            ${AI_SIZES.map(s => `
-              <button class="size-card ${aiState.size === s.id ? 'selected' : ''}" data-action="ai-pick-size" data-size="${s.id}">
-                <b>${s.label}</b><div class="size-dim">${s.dim}</div><div class="size-price mono">${fmtPrice(s.price)}</div>
-              </button>
-            `).join('')}
+        <div class="ai-finish-preview">
+          <div class="gen-stage"><img src="${aiState.previewImage}"></div>
+          <div class="ai-finish-style-tag">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            Estilo ${AI_STYLES.find(s => s.id === aiState.styleId)?.name || ''}
           </div>
+        </div>
 
-          <div class="option-group" style="margin-top:22px;">
-            <div class="option-label">Cor da base <span class="val">${FILAMENT_COLORS.find(c => c.id === aiState.color).name}</span></div>
-            <div class="color-swatches">
-              ${FILAMENT_COLORS.map(c => `<button class="swatch ${aiState.color === c.id ? 'selected' : ''}" style="background:${c.hex}" data-action="ai-pick-color" data-color="${c.id}" title="${c.name}"></button>`).join('')}
+        <div class="ai-finish-config">
+          <div class="ai-finish-card">
+            <h3 class="ai-finish-title">Escolha o tamanho</h3>
+            <div class="size-grid">
+              ${AI_SIZES.map(s => `
+                <button class="size-card ${aiState.size === s.id ? 'selected' : ''}" data-action="ai-pick-size" data-size="${s.id}">
+                  <b>${s.label}</b><div class="size-dim">${s.dim}</div><div class="size-price mono">${fmtPrice(s.price)}</div>
+                </button>
+              `).join('')}
+            </div>
+
+            <div class="ai-finish-row">
+              <span>Quantidade</span>
+              <div class="qty-stepper-lg">
+                <button data-action="ai-qty-dec">−</button><span id="ai-qty">${aiState.qty}</span><button data-action="ai-qty-inc">+</button>
+              </div>
             </div>
           </div>
 
-          <div class="qty-row" style="margin-top:20px;">
-            <div class="option-label" style="margin:0;flex:1;">Quantidade</div>
-            <div class="qty-stepper-lg">
-              <button data-action="ai-qty-dec">−</button><span id="ai-qty">${aiState.qty}</span><button data-action="ai-qty-inc">+</button>
+          <div class="ai-finish-card">
+            <h3 class="ai-finish-title">Calcular frete</h3>
+            <div class="cep-row">
+              <input type="text" id="ai-cep-input" placeholder="Digite seu CEP" maxlength="9" value="${aiState.shippingCep || ''}">
+              <button class="btn btn-outline btn-sm" data-action="ai-calc-shipping">Calcular</button>
+            </div>
+            <div id="ai-ship-result">
+              ${aiState.calculatingShipping ? `<div class="ship-loading">Calculando...</div>` :
+                aiState.shippingResult ? shippingResultHtml(aiState.shippingResult, total >= 199) :
+                `<p class="ship-hint">Informe seu CEP para ver o prazo e o valor exatos de entrega.</p>`}
             </div>
           </div>
 
-          <div class="pdp-price-block" style="margin-top:20px;">
-            <div class="pdp-price mono">${fmtPrice(sizeObj.price * aiState.qty)}</div>
-            <div class="pdp-installment">${fmtInstallment(sizeObj.price * aiState.qty)}</div>
-            <div class="pdp-pix"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> ${fmtPrice(pixPrice(sizeObj.price * aiState.qty))} no Pix (5% OFF)</div>
+          <div class="ai-finish-card ai-finish-summary">
+            <div class="summary-row"><span>${aiState.qty}× Miniatura ${sizeObj.label}</span><span class="mono">${fmtPrice(total)}</span></div>
+            <div class="summary-row"><span>Frete</span><span>${total >= 199 ? 'Grátis' : (aiState.shippingResult ? 'Calculado acima' : 'A calcular')}</span></div>
+            <div class="summary-row total"><span>Total</span><b class="mono">${fmtPrice(total)}</b></div>
+            <div class="pdp-pix" style="margin-top:2px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> ${fmtPrice(pixPrice(total))} no Pix (5% OFF)</div>
           </div>
 
-          <div style="display:flex;gap:10px;margin-top:20px;">
+          <div class="ai-finish-actions">
             <button class="btn btn-outline" data-action="ai-back-to-gen">Voltar</button>
             <button class="btn btn-dark btn-block" data-action="ai-add-cart">Adicionar ao carrinho</button>
           </div>
         </div>
       </div>
     `;
+    const cepInput = qs('#ai-cep-input');
+    if (cepInput) cepInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); qs('[data-action="ai-calc-shipping"]').click(); } });
   }
 }
 
@@ -2192,14 +2296,22 @@ document.addEventListener('click', (e) => {
       break;
 
     case 'calc-cep': {
-      const cep = document.getElementById('cep-input').value.replace(/\D/g, '');
+      const cepRaw = document.getElementById('cep-input').value.replace(/\D/g, '');
       const res = document.getElementById('cep-result');
-      if (cep.length < 8) { res.innerHTML = '<span style="color:var(--red)">Digite um CEP válido.</span>'; res.classList.add('show'); break; }
-      const days = 3 + (parseInt(cep[0]) % 5);
-      res.innerHTML = `
-        <div class="line"><span>PAC</span><span>${days + 2} dias úteis · ${cartSubtotal() >= 199 ? 'Grátis' : fmtPrice(14.90)}</span></div>
-        <div class="line"><span>Sedex</span><span>${days} dias úteis · ${fmtPrice(24.90)}</span></div>`;
+      if (cepRaw.length !== 8) { res.innerHTML = '<span style="color:var(--red)">Digite um CEP válido.</span>'; res.classList.add('show'); break; }
+      const p = findProduct(State.params.id);
+      if (!p || !p.pkg) {
+        res.innerHTML = '<span style="color:var(--gray)">Frete sob consulta para este item — fale conosco pelo WhatsApp.</span>';
+        res.classList.add('show');
+        break;
+      }
+      res.innerHTML = '<div class="ship-loading">Calculando...</div>';
       res.classList.add('show');
+      const qtyNow = pdpState.qty || 1;
+      const pkg = { ...p.pkg, quantity: qtyNow, value: (p.price || 0) * qtyNow };
+      fetchShippingOptions(cepRaw, pkg)
+        .then(result => { res.innerHTML = shippingResultHtml(result, (p.price || 0) * qtyNow >= 199); })
+        .catch(() => { res.innerHTML = '<span style="color:var(--red)">Não foi possível calcular o frete agora.</span>'; });
       break;
     }
 
@@ -2248,19 +2360,32 @@ document.addEventListener('click', (e) => {
     case 'ai-regenerate': aiState.previewImage = null; runGeneration(); break;
     case 'ai-goto-finish': aiState.step = 4; renderAiStep(); break;
     case 'ai-back-to-gen': aiState.step = 3; renderAiStep(); break;
-    case 'ai-pick-size': aiState.size = t.dataset.size; renderAiStep(); break;
-    case 'ai-pick-color': aiState.color = t.dataset.color; renderAiStep(); break;
-    case 'ai-qty-inc': aiState.qty++; document.getElementById('ai-qty').textContent = aiState.qty; renderAiStep(); break;
-    case 'ai-qty-dec': aiState.qty = Math.max(1, aiState.qty - 1); renderAiStep(); break;
+    case 'ai-pick-size': aiState.size = t.dataset.size; aiState.shippingResult = null; renderAiStep(); break;
+    case 'ai-qty-inc': aiState.qty++; aiState.shippingResult = null; renderAiStep(); break;
+    case 'ai-qty-dec': aiState.qty = Math.max(1, aiState.qty - 1); aiState.shippingResult = null; renderAiStep(); break;
+    case 'ai-calc-shipping': {
+      const cepRaw = qs('#ai-cep-input').value.replace(/\D/g, '');
+      if (cepRaw.length !== 8) { toast('Digite um CEP válido (8 dígitos)'); break; }
+      aiState.shippingCep = cepRaw;
+      aiState.calculatingShipping = true;
+      aiState.shippingResult = null;
+      renderAiStep();
+      const sizeObj = AI_SIZES.find(s => s.id === aiState.size);
+      const pkg = { ...sizeObj.pkg, quantity: aiState.qty, value: sizeObj.price * aiState.qty };
+      fetchShippingOptions(cepRaw, pkg)
+        .then(result => { aiState.shippingResult = result; })
+        .catch(() => { toast('Não foi possível calcular o frete agora.'); aiState.shippingResult = null; })
+        .finally(() => { aiState.calculatingShipping = false; renderAiStep(); });
+      break;
+    }
     case 'ai-add-cart': {
       const sizeObj = AI_SIZES.find(s => s.id === aiState.size);
-      const colorObj = FILAMENT_COLORS.find(c => c.id === aiState.color);
       const styleObj = AI_STYLES.find(s => s.id === aiState.styleId);
       addToCart({
         id: 'ai-miniatura-' + Date.now(),
         name: `Miniatura IA — ${styleObj.name} (${sizeObj.label})`,
         price: sizeObj.price, qty: aiState.qty,
-        color: colorObj.id, text: null, shape: 'figure',
+        color: null, text: null, shape: 'figure',
         previewImage: aiState.previewImage,
       });
       navigate('home');
