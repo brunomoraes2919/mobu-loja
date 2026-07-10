@@ -150,6 +150,7 @@ header.site-header{
   min-width:16px;height:16px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;
   padding:0 3px;font-family:var(--font-body);
 }
+.icon-count.dot{min-width:9px;width:9px;height:9px;padding:0;background:var(--green);}
 
 .nav-bottom{border-top:1px solid var(--border-light);}
 .nav-cats{
@@ -732,6 +733,84 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
   .ai-finish-preview{position:static;max-width:260px;margin:0 auto;}
 }
 
+/* ===================== CONTA DO CLIENTE ===================== */
+.auth-tabs{display:flex;gap:24px;border-bottom:1px solid var(--border-light);margin-bottom:24px;overflow-x:auto;}
+.auth-tab{
+  padding:12px 0;font-size:14px;font-weight:600;color:var(--gray);background:none;border:0;border-bottom:2px solid transparent;
+  flex-shrink:0;
+}
+.auth-tab.active{color:var(--black);border-bottom-color:var(--blue);}
+.auth-hint{font-size:13px;color:var(--gray);margin-top:16px;text-align:center;}
+.auth-hint a{color:var(--blue);font-weight:600;}
+
+.account-tabs{display:flex;gap:6px;border-bottom:1px solid var(--border-light);margin-bottom:26px;overflow-x:auto;}
+.account-tab{
+  padding:10px 16px;font-size:13px;font-weight:600;color:var(--gray);background:none;border:0;border-bottom:2px solid transparent;
+  white-space:nowrap;flex-shrink:0;border-radius:var(--radius) var(--radius) 0 0;
+}
+.account-tab.active{color:var(--black);border-bottom-color:var(--blue);background:var(--card-light);}
+.account-tab-logout{margin-left:auto;color:var(--red);}
+
+.account-card{background:var(--card-light);border-radius:var(--radius-md);padding:24px;}
+.account-card-title{font-family:var(--font-display);font-size:16px;margin-bottom:6px;}
+.account-card-subtitle{font-size:12.5px;color:var(--gray);margin-bottom:16px;}
+.account-card-note{font-size:11.5px;color:var(--gray-light);margin-top:16px;line-height:1.5;}
+.account-empty-hint{color:var(--gray);font-size:13.5px;text-align:center;}
+
+.account-addresses-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:flex-start;}
+.account-addresses-grid > *{min-width:0;}
+@media (max-width:760px){.account-addresses-grid{grid-template-columns:1fr;}}
+
+.address-card{
+  background:var(--card-light);border-radius:var(--radius-md);padding:18px;margin-bottom:14px;position:relative;
+}
+.address-card b{font-size:13.5px;display:block;margin-bottom:6px;}
+.address-card p{font-size:12.5px;color:var(--gray);margin:2px 0;}
+.address-default-badge{position:absolute;top:16px;right:16px;}
+.address-card-actions{display:flex;gap:14px;margin-top:12px;flex-wrap:wrap;}
+.link-btn{background:none;border:0;color:var(--blue);font-size:12px;font-weight:600;padding:0;}
+.link-btn-danger{color:var(--red);}
+
+.checkout-hint{font-size:12.5px;color:var(--gray);margin-bottom:18px;background:var(--card-light);padding:10px 14px;border-radius:var(--radius);}
+.checkout-hint a{color:var(--blue);font-weight:600;}
+
+.saved-address-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+.saved-address-option{
+  text-align:left;background:#fff;border:1.5px solid var(--border-light);border-radius:var(--radius);padding:14px;
+}
+.saved-address-option.selected{border-color:var(--blue);background:var(--blue-light);}
+.saved-address-option b{font-size:13px;display:block;margin-bottom:4px;}
+.saved-address-option p{font-size:12px;color:var(--gray);margin:0;}
+
+.payment-pref-list{display:flex;flex-direction:column;gap:10px;}
+.payment-pref-option{
+  display:flex;align-items:center;gap:12px;text-align:left;background:#fff;border:1.5px solid var(--border-light);
+  border-radius:var(--radius);padding:14px;
+}
+.payment-pref-option svg{width:20px;height:20px;flex-shrink:0;color:var(--gray);}
+.payment-pref-option div{flex:1;min-width:0;}
+.payment-pref-option b{font-size:13.5px;display:block;}
+.payment-pref-option span{font-size:11.5px;color:var(--gray);}
+.payment-pref-option.selected{border-color:var(--blue);background:var(--blue-light);}
+.payment-pref-option.selected svg:first-child{color:var(--blue);}
+.payment-pref-check{width:18px !important;height:18px !important;color:var(--blue) !important;flex-shrink:0;}
+
+.orders-list{display:flex;flex-direction:column;gap:16px;}
+.order-card{background:var(--card-light);border-radius:var(--radius-md);padding:20px;}
+.order-card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:10px;}
+.order-card-head b{font-size:14px;display:block;}
+.order-card-date{font-size:11.5px;color:var(--gray);display:block;margin-top:2px;}
+.order-card-total{font-size:15px;flex-shrink:0;}
+.order-progress{display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;}
+.order-progress-step{flex:1;min-width:64px;text-align:center;}
+.order-progress-step i{display:block;height:4px;border-radius:2px;background:var(--border-light);margin-bottom:6px;}
+.order-progress-step.done i{background:var(--blue);}
+.order-progress-step.current i{background:var(--blue);}
+.order-progress-step span{font-size:10px;color:var(--gray-light);}
+.order-progress-step.done span, .order-progress-step.current span{color:var(--black);font-weight:600;}
+.order-items{border-top:1px solid var(--border-light);padding-top:12px;}
+.order-item-row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:#333;}
+
 </style>
 </head>
 <body>
@@ -772,6 +851,10 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
       </button>
     </form>
     <div class="nav-icons">
+      <button class="icon-btn" data-action="go-account" id="account-icon-btn" aria-label="Minha conta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="4"/></svg>
+        <span class="icon-count dot" id="account-dot" style="display:none"></span>
+      </button>
       <button class="icon-btn" data-action="go-favoritos" aria-label="Favoritos">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
         <span class="icon-count" id="fav-count" style="display:none">0</span>
@@ -1537,10 +1620,46 @@ const State = {
   checkoutStep: 1,
   checkoutData: {},
   activePayTab: 'pix',
+  // ---- Conta do cliente (protótipo em localStorage — ver nota abaixo) ----
+  user: JSON.parse(localStorage.getItem('mobu_user') || 'null'),
+  addresses: JSON.parse(localStorage.getItem('mobu_addresses') || '[]'),
+  paymentPref: localStorage.getItem('mobu_payment_pref') || null, // 'pix' | 'cartao' | 'boleto'
+  orders: JSON.parse(localStorage.getItem('mobu_orders') || '[]'),
+  accountTab: 'perfil',
+  editingAddressId: null,
+  checkoutUseAddressId: null,
+  lastOrder: null,
 };
 
 function saveCart() { localStorage.setItem('mobu_cart', JSON.stringify(State.cart)); updateHeaderCounts(); }
 function saveWishlist() { localStorage.setItem('mobu_wishlist', JSON.stringify(State.wishlist)); updateHeaderCounts(); }
+
+/* -------------------------------------------------------------------------
+   CONTA DO CLIENTE — protótipo front-end (localStorage).
+   -------------------------------------------------------------------------
+   NENHUMA senha é salva em lugar nenhum, nem aqui — o campo existe na tela
+   de login/cadastro só pra simular o fluxo visual. Pra virar autenticação
+   de verdade (com senha protegida, recuperação de acesso, login em
+   qualquer aparelho), o caminho natural é o Supabase Auth, já que o projeto
+   já usa Supabase para as outras funções — é só habilitar Authentication e
+   trocar essas funções por chamadas reais do supabase-js.
+   NENHUM número de cartão é pedido nem salvo — só a preferência de forma
+   de pagamento (Pix/Cartão/Boleto), pra pré-selecionar no checkout.
+   ------------------------------------------------------------------------- */
+function saveUser() { localStorage.setItem('mobu_user', JSON.stringify(State.user)); }
+function saveAddresses() { localStorage.setItem('mobu_addresses', JSON.stringify(State.addresses)); }
+function savePaymentPref() { localStorage.setItem('mobu_payment_pref', State.paymentPref || ''); }
+function saveOrders() { localStorage.setItem('mobu_orders', JSON.stringify(State.orders)); }
+
+function isLoggedIn() { return !!State.user; }
+
+function orderStatus(order) {
+  const days = (Date.now() - order.createdAt) / 86400000;
+  if (days < 1) return { label: 'Pedido confirmado', step: 1 };
+  if (days < 3) return { label: 'Em produção', step: 2 };
+  if (days < 6) return { label: 'Enviado', step: 3 };
+  return { label: 'Entregue', step: 4 };
+}
 
 function updateHeaderCounts() {
   const cartCount = State.cart.reduce((s, i) => s + i.qty, 0);
@@ -1549,6 +1668,10 @@ function updateHeaderCounts() {
   const fc = document.getElementById('fav-count');
   cc.textContent = cartCount; cc.style.display = cartCount ? 'flex' : 'none';
   fc.textContent = favCount; fc.style.display = favCount ? 'flex' : 'none';
+  const ad = document.getElementById('account-dot');
+  const ab = document.getElementById('account-icon-btn');
+  if (ad) ad.style.display = isLoggedIn() ? 'flex' : 'none';
+  if (ab) ab.setAttribute('aria-label', isLoggedIn() ? `Minha conta (${State.user.name.split(' ')[0]})` : 'Entrar ou criar conta');
 }
 
 /* ===================== UTIL ===================== */
@@ -1955,6 +2078,192 @@ function renderFavoritos() {
     </div>`;
 }
 
+/* ===================== LOGIN / CADASTRO ===================== */
+let authTab = 'login';
+function renderLogin() {
+  const el = document.getElementById('view-login');
+  el.innerHTML = `
+    <div class="page-title-band"><div class="container"><h1>Entrar ou criar conta</h1><p>Salve endereços e acompanhe seus pedidos</p></div></div>
+    <div class="container" style="max-width:440px;padding:36px 0 80px;">
+      <div class="auth-tabs">
+        <button class="auth-tab ${authTab === 'login' ? 'active' : ''}" data-action="auth-tab" data-tab="login">Entrar</button>
+        <button class="auth-tab ${authTab === 'register' ? 'active' : ''}" data-action="auth-tab" data-tab="register">Criar conta</button>
+      </div>
+      <div id="auth-panel"></div>
+    </div>
+  `;
+  renderAuthPanel();
+}
+function renderAuthPanel() {
+  const panel = document.getElementById('auth-panel');
+  if (authTab === 'login') {
+    panel.innerHTML = `
+      <div class="form-field full"><label>E-mail</label><input type="email" id="login-email" placeholder="voce@email.com"></div>
+      <div class="form-field full"><label>Senha</label><input type="password" id="login-password" placeholder="••••••••"></div>
+      <button class="btn btn-dark btn-block" data-action="do-login">Entrar</button>
+      <p class="auth-hint">Ainda não tem conta? <a href="#" data-action="auth-tab" data-tab="register">Criar conta</a></p>
+    `;
+  } else {
+    panel.innerHTML = `
+      <div class="form-field full"><label>Nome completo</label><input type="text" id="reg-name" placeholder="Seu nome"></div>
+      <div class="form-field full"><label>E-mail</label><input type="email" id="reg-email" placeholder="voce@email.com"></div>
+      <div class="form-field full"><label>Telefone / WhatsApp</label><input type="text" id="reg-phone" placeholder="(65) 90000-0000"></div>
+      <div class="form-field full"><label>Senha</label><input type="password" id="reg-password" placeholder="Crie uma senha"></div>
+      <button class="btn btn-dark btn-block" data-action="do-register">Criar conta</button>
+      <p class="auth-hint">Já tem conta? <a href="#" data-action="auth-tab" data-tab="login">Entrar</a></p>
+    `;
+  }
+}
+
+/* ===================== MINHA CONTA ===================== */
+function renderAccount() {
+  if (!isLoggedIn()) { navigate('login'); return; }
+  const el = document.getElementById('view-account');
+  el.innerHTML = `
+    <div class="page-title-band"><div class="container"><h1>Minha conta</h1><p>Olá, ${escapeHtml(State.user.name.split(' ')[0])} 👋</p></div></div>
+    <div class="container" style="padding:26px 0 80px;">
+      <div class="account-tabs">
+        <button class="account-tab ${State.accountTab === 'perfil' ? 'active' : ''}" data-action="account-tab" data-tab="perfil">Perfil</button>
+        <button class="account-tab ${State.accountTab === 'enderecos' ? 'active' : ''}" data-action="account-tab" data-tab="enderecos">Endereços</button>
+        <button class="account-tab ${State.accountTab === 'pagamento' ? 'active' : ''}" data-action="account-tab" data-tab="pagamento">Pagamento</button>
+        <button class="account-tab ${State.accountTab === 'pedidos' ? 'active' : ''}" data-action="account-tab" data-tab="pedidos">Meus pedidos</button>
+        <button class="account-tab account-tab-logout" data-action="do-logout">Sair</button>
+      </div>
+      <div id="account-panel"></div>
+    </div>
+  `;
+  renderAccountPanel();
+}
+
+function renderAccountPanel() {
+  const panel = document.getElementById('account-panel');
+  if (State.accountTab === 'perfil') panel.innerHTML = accountProfileHtml();
+  else if (State.accountTab === 'enderecos') panel.innerHTML = accountAddressesHtml();
+  else if (State.accountTab === 'pagamento') panel.innerHTML = accountPaymentHtml();
+  else if (State.accountTab === 'pedidos') panel.innerHTML = accountOrdersHtml();
+}
+
+function accountProfileHtml() {
+  const u = State.user;
+  return `
+    <div class="account-card" style="max-width:440px;">
+      <div class="form-field full"><label>Nome completo</label><input type="text" id="profile-name" value="${escapeHtml(u.name)}"></div>
+      <div class="form-field full"><label>E-mail</label><input type="email" id="profile-email" value="${escapeHtml(u.email)}"></div>
+      <div class="form-field full"><label>Telefone / WhatsApp</label><input type="text" id="profile-phone" value="${escapeHtml(u.phone || '')}"></div>
+      <button class="btn btn-dark" data-action="save-profile">Salvar alterações</button>
+    </div>
+  `;
+}
+
+function addressCardHtml(a) {
+  return `
+    <div class="address-card">
+      ${a.isDefault ? '<span class="badge badge-blue address-default-badge">Padrão</span>' : ''}
+      <b>${escapeHtml(a.label)}</b>
+      <p>${escapeHtml(a.street)}, ${escapeHtml(a.number)}${a.complement ? ' — ' + escapeHtml(a.complement) : ''}</p>
+      <p>${escapeHtml(a.neighborhood)} · ${escapeHtml(a.city)}/${escapeHtml(a.uf)} · CEP ${escapeHtml(a.cep)}</p>
+      <div class="address-card-actions">
+        ${!a.isDefault ? `<button class="link-btn" data-action="set-default-address" data-id="${a.id}">Tornar padrão</button>` : ''}
+        <button class="link-btn" data-action="edit-address" data-id="${a.id}">Editar</button>
+        <button class="link-btn link-btn-danger" data-action="delete-address" data-id="${a.id}">Remover</button>
+      </div>
+    </div>
+  `;
+}
+
+function accountAddressesHtml() {
+  const editing = State.editingAddressId;
+  const list = State.addresses.map(addressCardHtml).join('');
+  const editingAddr = editing && editing !== 'new' ? State.addresses.find(a => a.id === editing) : null;
+  return `
+    <div class="account-addresses-grid">
+      <div>
+        ${State.addresses.length ? list : '<p class="account-empty-hint">Nenhum endereço salvo ainda.</p>'}
+      </div>
+      <div>
+        ${editing ? addressFormHtml(editingAddr) : `<button class="btn btn-outline" data-action="new-address">+ Adicionar endereço</button>`}
+      </div>
+    </div>
+  `;
+}
+function addressFormHtml(a) {
+  a = a || { label: '', cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', uf: '', isDefault: false };
+  return `
+    <div class="account-card">
+      <h3 class="account-card-title">${a.id ? 'Editar endereço' : 'Novo endereço'}</h3>
+      <div class="form-field full"><label>Apelido</label><input type="text" id="addr-label" placeholder="Ex: Casa, Trabalho" value="${escapeHtml(a.label)}"></div>
+      <div class="form-grid">
+        <div class="form-field"><label>CEP</label><input type="text" id="addr-cep" placeholder="00000-000" value="${escapeHtml(a.cep)}"></div>
+        <div class="form-field"><label>Cidade/UF</label><input type="text" id="addr-city" placeholder="Cuiabá" value="${escapeHtml(a.city)}"></div>
+      </div>
+      <div class="form-field full"><label>UF</label><input type="text" id="addr-uf" placeholder="MT" maxlength="2" value="${escapeHtml(a.uf)}"></div>
+      <div class="form-field full"><label>Endereço</label><input type="text" id="addr-street" placeholder="Rua, avenida..." value="${escapeHtml(a.street)}"></div>
+      <div class="form-grid">
+        <div class="form-field"><label>Número</label><input type="text" id="addr-number" value="${escapeHtml(a.number)}"></div>
+        <div class="form-field"><label>Complemento</label><input type="text" id="addr-comp" value="${escapeHtml(a.complement || '')}"></div>
+      </div>
+      <div class="form-field full"><label>Bairro</label><input type="text" id="addr-neighborhood" value="${escapeHtml(a.neighborhood)}"></div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button class="btn btn-outline" data-action="cancel-address-form">Cancelar</button>
+        <button class="btn btn-dark" style="flex:1;min-width:0;" data-action="save-address" data-id="${a.id || ''}">Salvar endereço</button>
+      </div>
+    </div>
+  `;
+}
+
+function accountPaymentHtml() {
+  const options = [
+    { id: 'pix', label: 'Pix', note: 'Aprovação na hora, 5% de desconto', icon: `<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>` },
+    { id: 'cartao', label: 'Cartão de crédito', note: 'Em até 3x sem juros', icon: `<rect x="3" y="6" width="18" height="13" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/>` },
+    { id: 'boleto', label: 'Boleto', note: 'Vence em 3 dias úteis', icon: `<rect x="4" y="4" width="16" height="16" rx="1"/><line x1="8" y1="4" x2="8" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="16" y1="4" x2="16" y2="20"/>` },
+  ];
+  return `
+    <div class="account-card" style="max-width:440px;">
+      <h3 class="account-card-title">Forma de pagamento preferida</h3>
+      <p class="account-card-subtitle">Selecionamos ela automaticamente no seu próximo checkout.</p>
+      <div class="payment-pref-list">
+        ${options.map(o => `
+          <button class="payment-pref-option ${State.paymentPref === o.id ? 'selected' : ''}" data-action="set-payment-pref" data-pref="${o.id}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${o.icon}</svg>
+            <div><b>${o.label}</b><span>${o.note}</span></div>
+            ${State.paymentPref === o.id ? '<svg class="payment-pref-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>' : ''}
+          </button>
+        `).join('')}
+      </div>
+      <p class="account-card-note">Por segurança, não guardamos número de cartão — isso é feito direto com o meio de pagamento na hora da compra.</p>
+    </div>
+  `;
+}
+
+function accountOrdersHtml() {
+  if (!State.orders.length) {
+    return `<div class="account-empty-hint" style="padding:40px 0;">
+      <p>Você ainda não fez nenhum pedido.</p>
+      <button class="btn btn-dark" style="margin-top:14px;" data-action="go-catalog" data-cat="all">Explorar produtos</button>
+    </div>`;
+  }
+  return `<div class="orders-list">${State.orders.slice().reverse().map(orderCardHtml).join('')}</div>`;
+}
+function orderCardHtml(o) {
+  const status = orderStatus(o);
+  const steps = ['Confirmado', 'Em produção', 'Enviado', 'Entregue'];
+  const dateStr = new Date(o.createdAt).toLocaleDateString('pt-BR');
+  return `
+    <div class="order-card">
+      <div class="order-card-head">
+        <div><b>${o.orderNumber}</b><span class="order-card-date">${dateStr}</span></div>
+        <span class="mono order-card-total">${fmtPrice(o.total)}</span>
+      </div>
+      <div class="order-progress">
+        ${steps.map((s, i) => `<div class="order-progress-step ${i < status.step ? 'done' : ''} ${i === status.step - 1 ? 'current' : ''}"><i></i><span>${s}</span></div>`).join('')}
+      </div>
+      <div class="order-items">
+        ${o.items.map(it => `<div class="order-item-row"><span>${it.qty}× ${escapeHtml(it.name)}</span><span class="mono">${fmtPrice(it.price * it.qty)}</span></div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
 /* ===================== PRODUTO (PDP) ===================== */
 let pdpState = { color: 'azul', text: '', qty: 1 };
 function renderProduct() {
@@ -2119,6 +2428,8 @@ function renderCart() {
 function renderCheckout() {
   if (!State.cart.length) { navigate('cart'); return; }
   State.checkoutStep = 1;
+  State.checkoutUseAddressId = null;
+  State.activePayTab = State.paymentPref || 'pix';
   const el = document.getElementById('view-checkout');
   el.innerHTML = `
     <div class="container" style="max-width:920px;padding:40px 32px 80px;">
@@ -2154,19 +2465,46 @@ function renderCheckoutStep() {
   });
   const content = document.getElementById('checkout-step-content');
   if (State.checkoutStep === 1) {
+    const u = State.user;
     content.innerHTML = `
       <h3 style="font-size:18px;margin-bottom:18px;">Quem vai receber?</h3>
+      ${isLoggedIn() ? `<p class="checkout-hint">Preenchido com os dados de <b>${escapeHtml(u.name)}</b>. <a href="#" data-action="go-account">Não é você?</a></p>` : `<p class="checkout-hint"><a href="#" data-action="go-account">Já tem conta? Entrar</a> para preencher automaticamente.</p>`}
       <div class="form-grid">
-        <div class="form-field full"><label>Nome completo</label><input type="text" id="ck-name" placeholder="Seu nome"></div>
-        <div class="form-field"><label>E-mail</label><input type="email" id="ck-email" placeholder="voce@email.com"></div>
-        <div class="form-field"><label>Telefone / WhatsApp</label><input type="text" id="ck-phone" placeholder="(65) 90000-0000"></div>
+        <div class="form-field full"><label>Nome completo</label><input type="text" id="ck-name" placeholder="Seu nome" value="${isLoggedIn() ? escapeHtml(u.name) : ''}"></div>
+        <div class="form-field"><label>E-mail</label><input type="email" id="ck-email" placeholder="voce@email.com" value="${isLoggedIn() ? escapeHtml(u.email) : ''}"></div>
+        <div class="form-field"><label>Telefone / WhatsApp</label><input type="text" id="ck-phone" placeholder="(65) 90000-0000" value="${isLoggedIn() ? escapeHtml(u.phone || '') : ''}"></div>
         <div class="form-field"><label>CPF</label><input type="text" id="ck-cpf" placeholder="000.000.000-00"></div>
       </div>
       <button class="btn btn-primary" data-action="checkout-next">Continuar para entrega</button>
     `;
   } else if (State.checkoutStep === 2) {
+    const hasAddresses = isLoggedIn() && State.addresses.length > 0;
+    if (hasAddresses && State.checkoutUseAddressId !== 'manual') {
+      if (!State.checkoutUseAddressId) {
+        const def = State.addresses.find(a => a.isDefault) || State.addresses[0];
+        State.checkoutUseAddressId = def.id;
+      }
+      content.innerHTML = `
+        <h3 style="font-size:18px;margin-bottom:18px;">Para onde enviamos?</h3>
+        <div class="saved-address-list">
+          ${State.addresses.map(a => `
+            <button class="saved-address-option ${State.checkoutUseAddressId === a.id ? 'selected' : ''}" data-action="pick-checkout-address" data-id="${a.id}">
+              <b>${escapeHtml(a.label)}</b>
+              <p>${escapeHtml(a.street)}, ${escapeHtml(a.number)} — ${escapeHtml(a.city)}/${escapeHtml(a.uf)}</p>
+            </button>
+          `).join('')}
+        </div>
+        <button class="link-btn" data-action="checkout-manual-address">+ Usar outro endereço</button>
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button class="btn btn-outline" data-action="checkout-back">Voltar</button>
+          <button class="btn btn-primary" style="flex:1;min-width:0;" data-action="checkout-next">Continuar para pagamento</button>
+        </div>
+      `;
+      return;
+    }
     content.innerHTML = `
       <h3 style="font-size:18px;margin-bottom:18px;">Para onde enviamos?</h3>
+      ${hasAddresses ? `<button class="link-btn" data-action="checkout-use-saved-address">← Usar endereço salvo</button>` : ''}
       <div class="form-grid">
         <div class="form-field"><label>CEP</label><input type="text" id="ck-cep" placeholder="00000-000"></div>
         <div class="form-field"><label>Cidade / UF</label><input type="text" id="ck-city" placeholder="Cuiabá / MT"></div>
@@ -2225,19 +2563,21 @@ function renderCheckoutStep() {
 /* ===================== SUCESSO ===================== */
 function renderSuccess() {
   const el = document.getElementById('view-success');
-  const orderNum = 'MOBU-' + Math.floor(10000 + Math.random() * 89999);
-  const total = cartSubtotal();
+  const order = State.lastOrder || { orderNumber: 'MOBU-00000', items: [], total: 0 };
   el.innerHTML = `
     <div class="success-wrap">
       <div class="success-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div>
       <h1 style="font-size:24px;">Pedido confirmado!</h1>
       <p style="color:var(--gray);margin-top:8px;font-size:14.5px;">Seu pedido entrou na fila de impressão. Em breve você recebe a confirmação por e-mail.</p>
       <div class="order-box">
-        <div class="row"><span>Número do pedido</span><b class="mono">${orderNum}</b></div>
-        <div class="row"><span>Itens</span><span>${State.cart.reduce((s,i)=>s+i.qty,0)}</span></div>
-        <div class="row"><span>Total</span><b class="mono">${fmtPrice(total)}</b></div>
+        <div class="row"><span>Número do pedido</span><b class="mono">${order.orderNumber}</b></div>
+        <div class="row"><span>Itens</span><span>${order.items.reduce((s,i)=>s+i.qty,0)}</span></div>
+        <div class="row"><span>Total</span><b class="mono">${fmtPrice(order.total)}</b></div>
         <div class="row"><span>Previsão de envio</span><span>3-5 dias úteis</span></div>
       </div>
+      ${isLoggedIn()
+        ? `<button class="btn btn-outline" style="margin-bottom:10px;" data-action="go-account-orders">Ver meus pedidos</button>`
+        : `<p class="checkout-hint" style="margin-bottom:14px;"><a href="#" data-action="go-account">Crie uma conta</a> para acompanhar este pedido depois.</p>`}
       <button class="btn btn-dark" data-action="go-home">Voltar para a loja</button>
       <div class="demo-note">
         <b>Nota de demonstração:</b> este é um protótipo de front-end. Nenhum pagamento real foi processado e nenhum e-mail foi enviado — é o momento de conectar um backend, um gateway de pagamento (Pix/cartão) e um serviço de e-mail transacional para colocar no ar de verdade.
@@ -2250,7 +2590,7 @@ function renderSuccess() {
 const RENDERERS = {
   home: renderHome, catalog: renderCatalog, product: renderProduct,
   cart: renderCart, checkout: renderCheckout, success: renderSuccess, favoritos: renderFavoritos,
-  'ai-studio': renderAiStudio,
+  'ai-studio': renderAiStudio, login: renderLogin, account: renderAccount,
 };
 
 document.addEventListener('click', (e) => {
@@ -2271,6 +2611,124 @@ document.addEventListener('click', (e) => {
     case 'go-cart': navigate('cart'); closeDrawer(); break;
     case 'go-checkout': if (State.cart.length) navigate('checkout'); break;
     case 'go-favoritos': navigate('favoritos'); break;
+    case 'go-account': navigate(isLoggedIn() ? 'account' : 'login'); break;
+    case 'go-account-orders': State.accountTab = 'pedidos'; navigate(isLoggedIn() ? 'account' : 'login'); break;
+
+    case 'auth-tab':
+      authTab = t.dataset.tab;
+      qsa('.auth-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === authTab));
+      renderAuthPanel();
+      break;
+
+    case 'do-login': {
+      const email = qs('#login-email').value.trim();
+      if (!email) { toast('Digite seu e-mail'); break; }
+      // Protótipo: não existe senha real armazenada em lugar nenhum — ver
+      // nota no topo da seção "CONTA DO CLIENTE" em app.js.
+      const existing = JSON.parse(localStorage.getItem('mobu_registered_users') || '{}')[email.toLowerCase()];
+      if (!existing) { toast('E-mail não encontrado. Crie uma conta.'); break; }
+      State.user = existing;
+      saveUser();
+      toast(`Bem-vindo(a) de volta, ${existing.name.split(' ')[0]}!`);
+      updateHeaderCounts();
+      navigate('account');
+      break;
+    }
+    case 'do-register': {
+      const name = qs('#reg-name').value.trim();
+      const email = qs('#reg-email').value.trim();
+      const phone = qs('#reg-phone').value.trim();
+      if (!name || !email) { toast('Preencha nome e e-mail'); break; }
+      const profile = { name, email, phone };
+      State.user = profile;
+      saveUser();
+      // guarda um índice simples por e-mail pra simular "login" depois —
+      // de novo, sem nenhuma senha nesse registro.
+      const registry = JSON.parse(localStorage.getItem('mobu_registered_users') || '{}');
+      registry[email.toLowerCase()] = profile;
+      localStorage.setItem('mobu_registered_users', JSON.stringify(registry));
+      toast(`Conta criada — bem-vindo(a), ${name.split(' ')[0]}!`);
+      updateHeaderCounts();
+      navigate('account');
+      break;
+    }
+    case 'do-logout':
+      State.user = null;
+      saveUser();
+      updateHeaderCounts();
+      toast('Você saiu da sua conta');
+      navigate('home');
+      break;
+
+    case 'account-tab':
+      State.accountTab = t.dataset.tab;
+      State.editingAddressId = null;
+      qsa('.account-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === State.accountTab));
+      renderAccountPanel();
+      break;
+
+    case 'save-profile': {
+      State.user.name = qs('#profile-name').value.trim() || State.user.name;
+      State.user.email = qs('#profile-email').value.trim() || State.user.email;
+      State.user.phone = qs('#profile-phone').value.trim();
+      saveUser();
+      updateHeaderCounts();
+      toast('Perfil atualizado');
+      renderAccount();
+      break;
+    }
+
+    case 'new-address': State.editingAddressId = 'new'; renderAccountPanel(); break;
+    case 'edit-address': State.editingAddressId = t.dataset.id; renderAccountPanel(); break;
+    case 'cancel-address-form': State.editingAddressId = null; renderAccountPanel(); break;
+    case 'save-address': {
+      const data = {
+        label: qs('#addr-label').value.trim() || 'Endereço',
+        cep: qs('#addr-cep').value.trim(),
+        city: qs('#addr-city').value.trim(),
+        uf: qs('#addr-uf').value.trim().toUpperCase(),
+        street: qs('#addr-street').value.trim(),
+        number: qs('#addr-number').value.trim(),
+        complement: qs('#addr-comp').value.trim(),
+        neighborhood: qs('#addr-neighborhood').value.trim(),
+      };
+      if (!data.cep || !data.street || !data.number) { toast('Preencha CEP, endereço e número'); break; }
+      const editId = t.dataset.id;
+      if (editId) {
+        const addr = State.addresses.find(a => a.id === editId);
+        Object.assign(addr, data);
+      } else {
+        data.id = 'addr-' + Date.now();
+        data.isDefault = State.addresses.length === 0;
+        State.addresses.push(data);
+      }
+      saveAddresses();
+      State.editingAddressId = null;
+      toast('Endereço salvo');
+      renderAccountPanel();
+      break;
+    }
+    case 'delete-address': {
+      const wasDefault = State.addresses.find(a => a.id === t.dataset.id)?.isDefault;
+      State.addresses = State.addresses.filter(a => a.id !== t.dataset.id);
+      if (wasDefault && State.addresses.length) State.addresses[0].isDefault = true;
+      saveAddresses();
+      toast('Endereço removido');
+      renderAccountPanel();
+      break;
+    }
+    case 'set-default-address':
+      State.addresses.forEach(a => { a.isDefault = (a.id === t.dataset.id); });
+      saveAddresses();
+      renderAccountPanel();
+      break;
+
+    case 'set-payment-pref':
+      State.paymentPref = t.dataset.pref;
+      savePaymentPref();
+      toast('Preferência de pagamento salva');
+      renderAccountPanel();
+      break;
     case 'go-ai-studio': resetAiState(); navigate('ai-studio'); break;
 
     case 'open-drawer': renderDrawer(); openDrawer(); break;
@@ -2363,10 +2821,22 @@ document.addEventListener('click', (e) => {
 
     case 'checkout-next': State.checkoutStep = Math.min(3, State.checkoutStep + 1); renderCheckoutStep(); break;
     case 'checkout-back': State.checkoutStep = Math.max(1, State.checkoutStep - 1); renderCheckoutStep(); break;
-    case 'checkout-finish':
+    case 'pick-checkout-address': State.checkoutUseAddressId = t.dataset.id; renderCheckoutStep(); break;
+    case 'checkout-manual-address': State.checkoutUseAddressId = 'manual'; renderCheckoutStep(); break;
+    case 'checkout-use-saved-address': State.checkoutUseAddressId = null; renderCheckoutStep(); break;
+    case 'checkout-finish': {
+      const orderNumber = 'MOBU-' + Math.floor(10000 + Math.random() * 89999);
+      const order = {
+        id: orderNumber, orderNumber, createdAt: Date.now(),
+        items: State.cart.map(i => ({ name: i.name, price: i.price, qty: i.qty })),
+        total: cartSubtotal(),
+      };
+      if (isLoggedIn()) { State.orders.push(order); saveOrders(); }
+      State.lastOrder = order;
       State.cart = []; saveCart();
       navigate('success');
       break;
+    }
 
     case 'pay-tab':
       State.activePayTab = t.dataset.tab;
@@ -2461,7 +2931,7 @@ function boot() {
 
   // build views container
   const app = document.getElementById('app');
-  app.innerHTML = ['home','catalog','product','cart','checkout','success','favoritos','ai-studio']
+  app.innerHTML = ['home','catalog','product','cart','checkout','success','favoritos','ai-studio','login','account']
     .map(v => `<div class="view" id="view-${v}"></div>`).join('');
 
   navigate('home');
