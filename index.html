@@ -39,7 +39,7 @@
   --header-h:112px;
 }
 *,*::before,*::after{box-sizing:border-box;}
-html{scroll-behavior:smooth;}
+html{scroll-behavior:smooth;overflow-x:hidden;}
 body{
   margin:0;
   font-family:var(--font-body);
@@ -47,6 +47,7 @@ body{
   background:var(--white);
   -webkit-font-smoothing:antialiased;
   line-height:1.5;
+  overflow-x:hidden;
 }
 h1,h2,h3,h4{
   font-family:var(--font-display);
@@ -463,6 +464,7 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 .qty-stepper-lg span{width:34px;text-align:center;font-family:var(--font-mono);font-size:14px;}
 
 .pdp-actions{display:flex;gap:10px;margin-bottom:26px;}
+.pdp-actions .btn-block{flex:1;min-width:0;}
 .icon-fav-btn{
   width:52px;height:52px;flex-shrink:0;border:1.5px solid var(--border-light);border-radius:var(--radius);
   display:flex;align-items:center;justify-content:center;background:#fff;
@@ -472,13 +474,14 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 
 .cep-box{background:var(--card-light);border-radius:var(--radius);padding:16px;margin-bottom:22px;}
 .cep-row{display:flex;gap:8px;margin-top:10px;}
-.cep-row input{flex:1;border:1px solid var(--border-light);border-radius:var(--radius);padding:10px 12px;font-size:13px;}
+.cep-row input{flex:1;min-width:0;border:1px solid var(--border-light);border-radius:var(--radius);padding:10px 12px;font-size:13px;}
 .cep-result{margin-top:12px;font-size:13px;display:none;}
 .cep-result.show{display:block;}
 .cep-result .line{display:flex;justify-content:space-between;padding:6px 0;border-top:1px dashed var(--border-light);}
 
 .pdp-tabs{border-top:1px solid var(--border-light);margin-top:8px;}
-.tab-heads{display:flex;gap:24px;border-bottom:1px solid var(--border-light);}
+.tab-heads{display:flex;gap:24px;border-bottom:1px solid var(--border-light);overflow-x:auto;}
+.tab-head{flex-shrink:0;}
 .tab-head{padding:14px 0;font-size:13px;font-weight:600;color:var(--gray);border-bottom:2px solid transparent;background:none;border-top:0;border-left:0;border-right:0;}
 .tab-head.active{color:var(--black);border-bottom-color:var(--blue);}
 .tab-panel{display:none;padding:20px 0;font-size:13.5px;color:#333;line-height:1.7;}
@@ -522,6 +525,7 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 .layer-steps-label b{color:var(--black);}
 
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media (max-width:480px){.form-grid{grid-template-columns:1fr;}}
 .form-field{margin-bottom:14px;}
 .form-field.full{grid-column:1/-1;}
 .form-field label{display:block;font-size:12px;font-weight:600;margin-bottom:6px;}
@@ -564,6 +568,16 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 /* generic view visibility */
 .view{display:none;}
 .view.active{display:block;}
+
+/* Correção geral: qualquer item direto de um grid precisa poder encolher
+   abaixo do tamanho do seu conteúdo, senão em telas estreitas o grid
+   inteiro estica pra caber o texto e a página passa a rolar de lado.
+   Aplicado a todos os grids do site, sem afetar a aparência no desktop. */
+.hero-grid > *, .trust-grid > *, .cat-grid > *, .prod-grid > *, .split > *,
+.testi-grid > *, .footer-grid > *, .product-grid > *, .cart-page-grid > *,
+.form-grid > *, .ai-promo > *, .style-grid > *, .size-grid > *, .ai-finish-grid > * {
+  min-width: 0;
+}
 
 /* ===================== AI STUDIO (miniatura personalizada) ===================== */
 .ai-nav-cta{
@@ -1419,9 +1433,9 @@ function renderAiStep() {
           </button>
         `).join('')}
       </div>
-      <div style="margin-top:24px;display:flex;justify-content:space-between;">
+      <div style="margin-top:24px;display:flex;justify-content:space-between;gap:10px;">
         <button class="btn btn-outline" data-action="ai-back-step">Voltar</button>
-        <button class="btn btn-primary" data-action="ai-goto-generate" ${aiState.styleId ? '' : 'disabled'}>Gerar prévia</button>
+        <button class="btn btn-primary" data-action="ai-goto-generate" style="flex:1;min-width:0;" ${aiState.styleId ? '' : 'disabled'}>Gerar prévia</button>
       </div>
     `;
   }
@@ -1500,7 +1514,7 @@ function renderAiStep() {
 
           <div class="ai-finish-actions">
             <button class="btn btn-outline" data-action="ai-back-to-gen">Voltar</button>
-            <button class="btn btn-dark btn-block" data-action="ai-add-cart">Adicionar ao carrinho</button>
+            <button class="btn btn-dark btn-block" data-action="ai-add-cart" style="flex:1;min-width:0;">Adicionar ao carrinho</button>
           </div>
         </div>
       </div>
@@ -2118,7 +2132,7 @@ function renderCheckout() {
         <span><b>CAMADA 02</b> — Entrega</span>
         <span><b>CAMADA 03</b> — Pagamento</span>
       </div>
-      <div class="cart-page-grid" style="grid-template-columns:1fr 340px;">
+      <div class="cart-page-grid">
         <div id="checkout-step-content"></div>
         <div class="summary-card">
           <h3 style="font-size:16px;margin-bottom:14px;">Resumo</h3>
@@ -2161,7 +2175,7 @@ function renderCheckoutStep() {
       </div>
       <div style="display:flex;gap:10px;">
         <button class="btn btn-outline" data-action="checkout-back">Voltar</button>
-        <button class="btn btn-primary" data-action="checkout-next">Continuar para pagamento</button>
+        <button class="btn btn-primary" data-action="checkout-next" style="flex:1;min-width:0;">Continuar para pagamento</button>
       </div>
     `;
   } else {
@@ -2202,7 +2216,7 @@ function renderCheckoutStep() {
       </div>
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button class="btn btn-outline" data-action="checkout-back">Voltar</button>
-        <button class="btn btn-primary" data-action="checkout-finish">Confirmar pedido</button>
+        <button class="btn btn-primary" data-action="checkout-finish" style="flex:1;min-width:0;">Confirmar pedido</button>
       </div>
     `;
   }
