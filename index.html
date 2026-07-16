@@ -377,6 +377,17 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 }
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 #toast svg{width:16px;height:16px;color:var(--green);flex-shrink:0;}
+#toast.toast-error svg{color:var(--red);}
+
+.password-field-wrap{position:relative;}
+.password-field-wrap input{width:100%;padding-right:44px !important;}
+.password-toggle-btn{
+  position:absolute;top:0;right:0;bottom:0;width:40px;display:flex;align-items:center;justify-content:center;
+  background:none;border:0;color:var(--gray-light);
+}
+.password-toggle-btn svg{width:18px;height:18px;}
+.cpf-error-hint{font-size:11px;color:var(--red);margin-top:5px;display:none;}
+.cpf-error-hint.show{display:block;}
 
 /* ===================== CART DRAWER ===================== */
 .overlay{
@@ -1533,7 +1544,7 @@ async function runGeneration() {
       aiState.isDemo = true;
     }
   } catch (e) {
-    toast('Não foi possível gerar a prévia agora. Tente novamente.');
+    toast('Não foi possível gerar a prévia agora. Tente novamente.', 'error');
     aiState.previewImage = aiState.images[0];
     aiState.isDemo = true;
   }
@@ -1761,7 +1772,7 @@ async function initUserSession() {
 async function loadAccountData(userId) {
   const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
   if (profile) {
-    State.user = { id: userId, name: profile.name, email: profile.email, phone: profile.phone };
+    State.user = { id: userId, name: profile.name, email: profile.email, phone: profile.phone, cpf: profile.cpf };
     State.paymentPref = profile.payment_pref;
   }
   const { data: addresses } = await supabaseClient.from('addresses').select('*').eq('user_id', userId).order('created_at');
@@ -1776,13 +1787,13 @@ async function loadAccountData(userId) {
   updateHeaderCounts();
 }
 
-async function doRegister(name, email, phone, password) {
+async function doRegister(name, email, phone, password, cpf) {
   const { data, error } = await supabaseClient.auth.signUp({ email, password });
   if (error) return { ok: false, message: traduzErroAuth(error) };
   if (!data.session) return { ok: false, needsConfirmation: true };
-  const { error: profErr } = await supabaseClient.from('profiles').insert({ id: data.user.id, name, email, phone });
+  const { error: profErr } = await supabaseClient.from('profiles').insert({ id: data.user.id, name, email, phone, cpf });
   if (profErr) { console.error(profErr); return { ok: false, message: 'Conta criada, mas houve um erro salvando o perfil.' }; }
-  State.user = { id: data.user.id, name, email, phone };
+  State.user = { id: data.user.id, name, email, phone, cpf };
   return { ok: true };
 }
 
@@ -1899,12 +1910,55 @@ function qsa(sel, ctx) { return Array.from((ctx || document).querySelectorAll(se
 function escapeHtml(s) { return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 let toastTimer = null;
-function toast(msg) {
+function toast(msg, type) {
   const el = document.getElementById('toast');
-  el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg><span>${escapeHtml(msg)}</span>`;
+  const isError = type === 'error';
+  const icon = isError
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"/></svg>`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>`;
+  el.classList.toggle('toast-error', isError);
+  el.innerHTML = `${icon}<span>${escapeHtml(msg)}</span>`;
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+// Alterna um campo de senha entre oculto/visível — usado pelo "olhinho".
+function togglePasswordVisibility(btn) {
+  const input = btn.previousElementSibling;
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  btn.innerHTML = showing ? EYE_ICON : EYE_OFF_ICON;
+}
+const EYE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const EYE_OFF_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.4 21.4 0 0 1 5.06-5.94M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 7 11 7a21.4 21.4 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+function passwordFieldHtml(id, placeholder) {
+  return `
+    <div class="password-field-wrap">
+      <input type="password" id="${id}" placeholder="${placeholder}">
+      <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" aria-label="Mostrar senha">${EYE_ICON}</button>
+    </div>`;
+}
+
+// Validação de CPF (dígitos verificadores) — confere se o número é
+// matematicamente válido, não só o formato.
+function isValidCpf(cpfRaw) {
+  const cpf = (cpfRaw || '').replace(/\D/g, '');
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false; // todos os dígitos iguais — sempre inválido
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(cpf[i], 10) * (10 - i);
+  let d1 = (sum * 10) % 11; if (d1 === 10) d1 = 0;
+  if (d1 !== parseInt(cpf[9], 10)) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(cpf[i], 10) * (11 - i);
+  let d2 = (sum * 10) % 11; if (d2 === 10) d2 = 0;
+  if (d2 !== parseInt(cpf[10], 10)) return false;
+  return true;
+}
+function formatCpf(cpf) {
+  const clean = (cpf || '').replace(/\D/g, '').slice(0, 11);
+  return clean.replace(/(\d{3})(\d{0,3})(\d{0,3})(\d{0,2})/, (_, a, b, c, d) => [a, b, c].filter(Boolean).join('.') + (d ? '-' + d : ''));
 }
 
 /* ===================== ÍCONES SVG (categorias / produtos) =====================
@@ -2298,7 +2352,7 @@ function renderAuthPanel() {
   if (authTab === 'login') {
     panel.innerHTML = `
       <div class="form-field full"><label>E-mail</label><input type="email" id="login-email" placeholder="voce@email.com"></div>
-      <div class="form-field full"><label>Senha</label><input type="password" id="login-password" placeholder="••••••••"></div>
+      <div class="form-field full"><label>Senha</label>${passwordFieldHtml('login-password', '••••••••')}</div>
       <button class="btn btn-dark btn-block" data-action="do-login">Entrar</button>
       <p class="auth-hint">Ainda não tem conta? <a href="#" data-action="auth-tab" data-tab="register">Criar conta</a></p>
     `;
@@ -2307,10 +2361,18 @@ function renderAuthPanel() {
       <div class="form-field full"><label>Nome completo</label><input type="text" id="reg-name" placeholder="Seu nome"></div>
       <div class="form-field full"><label>E-mail</label><input type="email" id="reg-email" placeholder="voce@email.com"></div>
       <div class="form-field full"><label>Telefone / WhatsApp</label><input type="text" id="reg-phone" placeholder="(65) 90000-0000"></div>
-      <div class="form-field full"><label>Senha</label><input type="password" id="reg-password" placeholder="Crie uma senha"></div>
+      <div class="form-field full">
+        <label>CPF</label>
+        <input type="text" id="reg-cpf" placeholder="000.000.000-00" maxlength="14">
+        <span class="cpf-error-hint" id="reg-cpf-hint">CPF inválido — confira os números.</span>
+      </div>
+      <div class="form-field full"><label>Senha</label>${passwordFieldHtml('reg-password', 'Crie uma senha (mín. 6 caracteres)')}</div>
+      <div class="form-field full"><label>Confirmar senha</label>${passwordFieldHtml('reg-password-confirm', 'Digite a senha de novo')}</div>
       <button class="btn btn-dark btn-block" data-action="do-register">Criar conta</button>
       <p class="auth-hint">Já tem conta? <a href="#" data-action="auth-tab" data-tab="login">Entrar</a></p>
     `;
+    const cpfInput = qs('#reg-cpf');
+    cpfInput.addEventListener('input', (e) => { e.target.value = formatCpf(e.target.value); });
   }
 }
 
@@ -2361,6 +2423,7 @@ function accountProfileHtml() {
       <div class="form-field full"><label>Nome completo</label><input type="text" id="profile-name" value="${escapeHtml(u.name)}"></div>
       <div class="form-field full"><label>E-mail</label><input type="email" id="profile-email" value="${escapeHtml(u.email)}"></div>
       <div class="form-field full"><label>Telefone / WhatsApp</label><input type="text" id="profile-phone" value="${escapeHtml(u.phone || '')}"></div>
+      ${u.cpf ? `<div class="form-field full"><label>CPF</label><input type="text" value="${escapeHtml(formatCpf(u.cpf))}" disabled></div>` : ''}
       <button class="btn btn-dark" data-action="save-profile">Salvar alterações</button>
     </div>
   `;
@@ -2861,21 +2924,21 @@ document.addEventListener('click', async (e) => {
 
     case 'do-login': {
       const email = qs('#login-email').value.trim();
-      if (!email) { toast('Digite seu e-mail'); break; }
+      if (!email) { toast('Digite seu e-mail', 'error'); break; }
       if (isSupabaseConfigured()) {
         const password = qs('#login-password').value;
-        if (!password) { toast('Digite sua senha'); break; }
+        if (!password) { toast('Digite sua senha', 'error'); break; }
         t.disabled = true; t.textContent = 'Entrando...';
         const result = await doLogin(email, password);
         t.disabled = false; t.textContent = 'Entrar';
-        if (!result.ok) { toast(result.message); break; }
+        if (!result.ok) { toast(result.message, 'error'); break; }
         toast(`Bem-vindo(a) de volta, ${State.user.name.split(' ')[0]}!`);
         updateHeaderCounts();
         navigate('account');
       } else {
         // Modo de demonstração (sem Supabase configurado ainda) — sem senha real.
         const existing = JSON.parse(localStorage.getItem('mobu_registered_users') || '{}')[email.toLowerCase()];
-        if (!existing) { toast('E-mail não encontrado. Crie uma conta.'); break; }
+        if (!existing) { toast('E-mail não encontrado. Crie uma conta.', 'error'); break; }
         State.user = existing;
         saveUser();
         toast(`Bem-vindo(a) de volta, ${existing.name.split(' ')[0]}!`);
@@ -2888,21 +2951,27 @@ document.addEventListener('click', async (e) => {
       const name = qs('#reg-name').value.trim();
       const email = qs('#reg-email').value.trim();
       const phone = qs('#reg-phone').value.trim();
-      if (!name || !email) { toast('Preencha nome e e-mail'); break; }
+      const cpf = qs('#reg-cpf').value.trim();
+      const cpfHint = qs('#reg-cpf-hint');
+      if (!name || !email) { toast('Preencha nome e e-mail', 'error'); break; }
+      if (!isValidCpf(cpf)) { cpfHint.classList.add('show'); toast('CPF inválido — confira os números', 'error'); break; }
+      cpfHint.classList.remove('show');
+      const password = qs('#reg-password').value;
+      const passwordConfirm = qs('#reg-password-confirm').value;
+      if (!password || password.length < 6) { toast('Crie uma senha com pelo menos 6 caracteres', 'error'); break; }
+      if (password !== passwordConfirm) { toast('As senhas não são iguais — confira e tente de novo', 'error'); break; }
       if (isSupabaseConfigured()) {
-        const password = qs('#reg-password').value;
-        if (!password || password.length < 6) { toast('Crie uma senha com pelo menos 6 caracteres'); break; }
         t.disabled = true; t.textContent = 'Criando conta...';
-        const result = await doRegister(name, email, phone, password);
+        const result = await doRegister(name, email, phone, password, cpf);
         t.disabled = false; t.textContent = 'Criar conta';
         if (result.needsConfirmation) { toast('Quase lá! Confirme seu e-mail para poder entrar.'); break; }
-        if (!result.ok) { toast(result.message); break; }
+        if (!result.ok) { toast(result.message, 'error'); break; }
         toast(`Conta criada — bem-vindo(a), ${name.split(' ')[0]}!`);
         updateHeaderCounts();
         navigate('account');
       } else {
         // Modo de demonstração — sem nenhuma senha guardada, nem aqui.
-        const profile = { name, email, phone };
+        const profile = { name, email, phone, cpf };
         State.user = profile;
         saveUser();
         const registry = JSON.parse(localStorage.getItem('mobu_registered_users') || '{}');
@@ -2934,7 +3003,7 @@ document.addEventListener('click', async (e) => {
       const phone = qs('#profile-phone').value.trim();
       if (isSupabaseConfigured()) {
         const ok = await saveProfileReal(name, phone);
-        if (!ok) { toast('Não foi possível salvar agora'); break; }
+        if (!ok) { toast('Não foi possível salvar agora', 'error'); break; }
       } else {
         State.user.name = name;
         State.user.email = qs('#profile-email').value.trim() || State.user.email;
@@ -2961,7 +3030,7 @@ document.addEventListener('click', async (e) => {
         complement: qs('#addr-comp').value.trim(),
         neighborhood: qs('#addr-neighborhood').value.trim(),
       };
-      if (!data.cep || !data.street || !data.number) { toast('Preencha CEP, endereço e número'); break; }
+      if (!data.cep || !data.street || !data.number) { toast('Preencha CEP, endereço e número', 'error'); break; }
       const wantsDefault = qs('#addr-default').checked;
       const editId = t.dataset.id;
       if (isSupabaseConfigured()) {
@@ -2972,7 +3041,7 @@ document.addEventListener('click', async (e) => {
           if (!State.addresses.find(a => a.id === savedId)?.isDefault) await setDefaultAddressReal(savedId);
         }
         t.disabled = false;
-        if (!ok) { toast('Não foi possível salvar o endereço'); break; }
+        if (!ok) { toast('Não foi possível salvar o endereço', 'error'); break; }
       } else {
         if (editId) {
           const addr = State.addresses.find(a => a.id === editId);
@@ -2993,7 +3062,7 @@ document.addEventListener('click', async (e) => {
     case 'delete-address': {
       if (isSupabaseConfigured()) {
         const ok = await deleteAddressReal(t.dataset.id);
-        if (!ok) { toast('Não foi possível remover agora'); break; }
+        if (!ok) { toast('Não foi possível remover agora', 'error'); break; }
         if (!State.addresses.some(a => a.isDefault) && State.addresses.length) await setDefaultAddressReal(State.addresses[0].id);
       } else {
         const wasDefault = State.addresses.find(a => a.id === t.dataset.id)?.isDefault;
@@ -3130,7 +3199,7 @@ document.addEventListener('click', async (e) => {
     case 'ai-goto-style': aiState.step = 2; renderAiStep(); break;
     case 'ai-pick-style': {
       const style = AI_STYLES.find(s => s.id === t.dataset.style);
-      if (!style.available) { toast('Em breve — esse estilo ainda não está disponível'); break; }
+      if (!style.available) { toast('Em breve — esse estilo ainda não está disponível', 'error'); break; }
       aiState.styleId = t.dataset.style;
       renderAiStep();
       break;
@@ -3146,7 +3215,7 @@ document.addEventListener('click', async (e) => {
     case 'ai-qty-dec': aiState.qty = Math.max(1, aiState.qty - 1); aiState.shippingResult = null; renderAiStep(); break;
     case 'ai-calc-shipping': {
       const cepRaw = qs('#ai-cep-input').value.replace(/\D/g, '');
-      if (cepRaw.length !== 8) { toast('Digite um CEP válido (8 dígitos)'); break; }
+      if (cepRaw.length !== 8) { toast('Digite um CEP válido (8 dígitos)', 'error'); break; }
       aiState.shippingCep = cepRaw;
       aiState.calculatingShipping = true;
       aiState.shippingResult = null;
@@ -3155,7 +3224,7 @@ document.addEventListener('click', async (e) => {
       const pkg = { ...sizeObj.pkg, quantity: aiState.qty, value: sizeObj.price * aiState.qty };
       fetchShippingOptions(cepRaw, pkg)
         .then(result => { aiState.shippingResult = result; })
-        .catch(() => { toast('Não foi possível calcular o frete agora.'); aiState.shippingResult = null; })
+        .catch(() => { toast('Não foi possível calcular o frete agora.', 'error'); aiState.shippingResult = null; })
         .finally(() => { aiState.calculatingShipping = false; renderAiStep(); });
       break;
     }
