@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ===================== TOKENS ===================== */
 :root{
@@ -1154,6 +1155,22 @@ function disposeConfigurators() {
    PARA EDITAR O CATÁLOGO: veja a constante PRODUCTS logo abaixo.
    ========================================================================= */
 
+/* ===================== SUPABASE (conta do cliente) =====================
+   Autenticação e banco de dados de verdade — endereços e pedidos ficam
+   acessíveis em qualquer aparelho, com senha protegida pelo próprio
+   Supabase Auth (nunca manipulada por este arquivo).
+
+   Cole aqui a URL do seu projeto e a chave "publishable" (pública, segura
+   pra expor no navegador — protegida pelas regras de RLS que você rodou
+   no SQL). Encontre as duas em: Supabase → Settings → API.
+   ========================================================================= */
+const SUPABASE_URL = 'https://lkrucvfruwkjbrfcdvpm.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_5zHpQxXSYgEY80AZMezAlg_kuzgPoxI'; // <- cole aqui a chave publishable (Settings → API)
+
+const supabaseClient = (SUPABASE_ANON_KEY && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
 /* ===================== DADOS ===================== */
 
 const CATEGORIES = [
@@ -1620,7 +1637,7 @@ const State = {
   checkoutStep: 1,
   checkoutData: {},
   activePayTab: 'pix',
-  // ---- Conta do cliente (protótipo em localStorage — ver nota abaixo) ----
+  // ---- Conta do cliente (Supabase se configurado, senão localStorage) ----
   user: JSON.parse(localStorage.getItem('mobu_user') || 'null'),
   addresses: JSON.parse(localStorage.getItem('mobu_addresses') || '[]'),
   paymentPref: localStorage.getItem('mobu_payment_pref') || null, // 'pix' | 'cartao' | 'boleto'
@@ -1635,22 +1652,18 @@ function saveCart() { localStorage.setItem('mobu_cart', JSON.stringify(State.car
 function saveWishlist() { localStorage.setItem('mobu_wishlist', JSON.stringify(State.wishlist)); updateHeaderCounts(); }
 
 /* -------------------------------------------------------------------------
-   CONTA DO CLIENTE — protótipo front-end (localStorage).
+   CONTA DO CLIENTE
    -------------------------------------------------------------------------
-   NENHUMA senha é salva em lugar nenhum, nem aqui — o campo existe na tela
-   de login/cadastro só pra simular o fluxo visual. Pra virar autenticação
-   de verdade (com senha protegida, recuperação de acesso, login em
-   qualquer aparelho), o caminho natural é o Supabase Auth, já que o projeto
-   já usa Supabase para as outras funções — é só habilitar Authentication e
-   trocar essas funções por chamadas reais do supabase-js.
-   NENHUM número de cartão é pedido nem salvo — só a preferência de forma
-   de pagamento (Pix/Cartão/Boleto), pra pré-selecionar no checkout.
-   ------------------------------------------------------------------------- */
-function saveUser() { localStorage.setItem('mobu_user', JSON.stringify(State.user)); }
-function saveAddresses() { localStorage.setItem('mobu_addresses', JSON.stringify(State.addresses)); }
-function savePaymentPref() { localStorage.setItem('mobu_payment_pref', State.paymentPref || ''); }
-function saveOrders() { localStorage.setItem('mobu_orders', JSON.stringify(State.orders)); }
+   Se SUPABASE_ANON_KEY (no topo do arquivo) estiver configurada, tudo aqui
+   usa autenticação e banco de dados REAIS do Supabase — senha protegida
+   pelo próprio Supabase Auth (este arquivo nunca vê a senha em texto),
+   endereços e pedidos acessíveis de qualquer aparelho.
 
+   Enquanto a chave não for configurada, cai automaticamente no modo de
+   demonstração (localStorage, só neste navegador) — mesma lógica de antes,
+   sem senha nenhuma armazenada, nem para teste.
+   ------------------------------------------------------------------------- */
+function isSupabaseConfigured() { return !!supabaseClient; }
 function isLoggedIn() { return !!State.user; }
 
 function orderStatus(order) {
@@ -1660,6 +1673,115 @@ function orderStatus(order) {
   if (days < 6) return { label: 'Enviado', step: 3 };
   return { label: 'Entregue', step: 4 };
 }
+
+// Restaura a sessão (se já estava logado) ao carregar a página.
+async function initUserSession() {
+  if (!isSupabaseConfigured()) return; // demo mode já carregou tudo do localStorage acima
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session) await loadAccountData(session.user.id);
+}
+
+async function loadAccountData(userId) {
+  const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
+  if (profile) {
+    State.user = { id: userId, name: profile.name, email: profile.email, phone: profile.phone };
+    State.paymentPref = profile.payment_pref;
+  }
+  const { data: addresses } = await supabaseClient.from('addresses').select('*').eq('user_id', userId).order('created_at');
+  State.addresses = (addresses || []).map(a => ({
+    id: a.id, label: a.label, cep: a.cep, street: a.street, number: a.number,
+    complement: a.complement, neighborhood: a.neighborhood, city: a.city, uf: a.uf, isDefault: a.is_default,
+  }));
+  const { data: orders } = await supabaseClient.from('orders').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+  State.orders = (orders || []).map(o => ({
+    id: o.id, orderNumber: o.order_number, items: o.items, total: parseFloat(o.total), createdAt: new Date(o.created_at).getTime(),
+  }));
+  updateHeaderCounts();
+}
+
+async function doRegister(name, email, phone, password) {
+  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) return { ok: false, message: traduzErroAuth(error) };
+  if (!data.session) return { ok: false, needsConfirmation: true };
+  const { error: profErr } = await supabaseClient.from('profiles').insert({ id: data.user.id, name, email, phone });
+  if (profErr) { console.error(profErr); return { ok: false, message: 'Conta criada, mas houve um erro salvando o perfil.' }; }
+  State.user = { id: data.user.id, name, email, phone };
+  return { ok: true };
+}
+
+async function doLogin(email, password) {
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) return { ok: false, message: traduzErroAuth(error) };
+  await loadAccountData(data.user.id);
+  return { ok: true };
+}
+
+async function doLogoutReal() {
+  await supabaseClient.auth.signOut();
+  State.user = null; State.addresses = []; State.orders = []; State.paymentPref = null;
+}
+
+function traduzErroAuth(error) {
+  const msg = (error && error.message) || '';
+  if (msg.includes('already registered') || msg.includes('already exists')) return 'Esse e-mail já tem uma conta — tente entrar.';
+  if (msg.includes('Invalid login credentials')) return 'E-mail ou senha incorretos.';
+  if (msg.includes('Password should be')) return 'A senha precisa ter pelo menos 6 caracteres.';
+  return msg || 'Algo deu errado. Tente novamente.';
+}
+
+async function saveProfileReal(name, phone) {
+  const { error } = await supabaseClient.from('profiles').update({ name, phone }).eq('id', State.user.id);
+  if (!error) { State.user.name = name; State.user.phone = phone; }
+  return !error;
+}
+
+async function saveAddressReal(data, editId) {
+  if (editId) {
+    const { error } = await supabaseClient.from('addresses').update({
+      label: data.label, cep: data.cep, street: data.street, number: data.number,
+      complement: data.complement, neighborhood: data.neighborhood, city: data.city, uf: data.uf,
+    }).eq('id', editId);
+    if (!error) Object.assign(State.addresses.find(a => a.id === editId), data);
+    return !error;
+  }
+  const isFirst = State.addresses.length === 0;
+  const { data: inserted, error } = await supabaseClient.from('addresses').insert({
+    user_id: State.user.id, label: data.label, cep: data.cep, street: data.street, number: data.number,
+    complement: data.complement, neighborhood: data.neighborhood, city: data.city, uf: data.uf, is_default: isFirst,
+  }).select().single();
+  if (!error) { data.id = inserted.id; data.isDefault = isFirst; State.addresses.push(data); }
+  return !error;
+}
+async function deleteAddressReal(id) {
+  const { error } = await supabaseClient.from('addresses').delete().eq('id', id);
+  if (!error) State.addresses = State.addresses.filter(a => a.id !== id);
+  return !error;
+}
+async function setDefaultAddressReal(id) {
+  await supabaseClient.from('addresses').update({ is_default: false }).eq('user_id', State.user.id);
+  const { error } = await supabaseClient.from('addresses').update({ is_default: true }).eq('id', id);
+  if (!error) State.addresses.forEach(a => { a.isDefault = (a.id === id); });
+  return !error;
+}
+async function setPaymentPrefReal(pref) {
+  const { error } = await supabaseClient.from('profiles').update({ payment_pref: pref }).eq('id', State.user.id);
+  if (!error) State.paymentPref = pref;
+  return !error;
+}
+async function saveOrderReal(order) {
+  const { error } = await supabaseClient.from('orders').insert({
+    user_id: State.user.id, order_number: order.orderNumber, items: order.items, total: order.total,
+  });
+  if (!error) State.orders.unshift(order);
+  return !error;
+}
+
+// ---- modo de demonstração (localStorage) — usado só quando o Supabase
+// ainda não foi configurado, pra você conseguir testar o fluxo mesmo assim.
+function saveUser() { localStorage.setItem('mobu_user', JSON.stringify(State.user)); }
+function saveAddresses() { localStorage.setItem('mobu_addresses', JSON.stringify(State.addresses)); }
+function savePaymentPref() { localStorage.setItem('mobu_payment_pref', State.paymentPref || ''); }
+function saveOrders() { localStorage.setItem('mobu_orders', JSON.stringify(State.orders)); }
 
 function updateHeaderCounts() {
   const cartCount = State.cart.reduce((s, i) => s + i.qty, 0);
@@ -2593,7 +2715,7 @@ const RENDERERS = {
   'ai-studio': renderAiStudio, login: renderLogin, account: renderAccount,
 };
 
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
   const navCats = document.getElementById('nav-cats');
   if (navCats.classList.contains('mobile-open') && !navCats.contains(e.target) && !e.target.closest('[data-action="toggle-mobile-nav"]')) {
     navCats.classList.remove('mobile-open');
@@ -2623,15 +2745,26 @@ document.addEventListener('click', (e) => {
     case 'do-login': {
       const email = qs('#login-email').value.trim();
       if (!email) { toast('Digite seu e-mail'); break; }
-      // Protótipo: não existe senha real armazenada em lugar nenhum — ver
-      // nota no topo da seção "CONTA DO CLIENTE" em app.js.
-      const existing = JSON.parse(localStorage.getItem('mobu_registered_users') || '{}')[email.toLowerCase()];
-      if (!existing) { toast('E-mail não encontrado. Crie uma conta.'); break; }
-      State.user = existing;
-      saveUser();
-      toast(`Bem-vindo(a) de volta, ${existing.name.split(' ')[0]}!`);
-      updateHeaderCounts();
-      navigate('account');
+      if (isSupabaseConfigured()) {
+        const password = qs('#login-password').value;
+        if (!password) { toast('Digite sua senha'); break; }
+        t.disabled = true; t.textContent = 'Entrando...';
+        const result = await doLogin(email, password);
+        t.disabled = false; t.textContent = 'Entrar';
+        if (!result.ok) { toast(result.message); break; }
+        toast(`Bem-vindo(a) de volta, ${State.user.name.split(' ')[0]}!`);
+        updateHeaderCounts();
+        navigate('account');
+      } else {
+        // Modo de demonstração (sem Supabase configurado ainda) — sem senha real.
+        const existing = JSON.parse(localStorage.getItem('mobu_registered_users') || '{}')[email.toLowerCase()];
+        if (!existing) { toast('E-mail não encontrado. Crie uma conta.'); break; }
+        State.user = existing;
+        saveUser();
+        toast(`Bem-vindo(a) de volta, ${existing.name.split(' ')[0]}!`);
+        updateHeaderCounts();
+        navigate('account');
+      }
       break;
     }
     case 'do-register': {
@@ -2639,22 +2772,34 @@ document.addEventListener('click', (e) => {
       const email = qs('#reg-email').value.trim();
       const phone = qs('#reg-phone').value.trim();
       if (!name || !email) { toast('Preencha nome e e-mail'); break; }
-      const profile = { name, email, phone };
-      State.user = profile;
-      saveUser();
-      // guarda um índice simples por e-mail pra simular "login" depois —
-      // de novo, sem nenhuma senha nesse registro.
-      const registry = JSON.parse(localStorage.getItem('mobu_registered_users') || '{}');
-      registry[email.toLowerCase()] = profile;
-      localStorage.setItem('mobu_registered_users', JSON.stringify(registry));
-      toast(`Conta criada — bem-vindo(a), ${name.split(' ')[0]}!`);
-      updateHeaderCounts();
-      navigate('account');
+      if (isSupabaseConfigured()) {
+        const password = qs('#reg-password').value;
+        if (!password || password.length < 6) { toast('Crie uma senha com pelo menos 6 caracteres'); break; }
+        t.disabled = true; t.textContent = 'Criando conta...';
+        const result = await doRegister(name, email, phone, password);
+        t.disabled = false; t.textContent = 'Criar conta';
+        if (result.needsConfirmation) { toast('Quase lá! Confirme seu e-mail para poder entrar.'); break; }
+        if (!result.ok) { toast(result.message); break; }
+        toast(`Conta criada — bem-vindo(a), ${name.split(' ')[0]}!`);
+        updateHeaderCounts();
+        navigate('account');
+      } else {
+        // Modo de demonstração — sem nenhuma senha guardada, nem aqui.
+        const profile = { name, email, phone };
+        State.user = profile;
+        saveUser();
+        const registry = JSON.parse(localStorage.getItem('mobu_registered_users') || '{}');
+        registry[email.toLowerCase()] = profile;
+        localStorage.setItem('mobu_registered_users', JSON.stringify(registry));
+        toast(`Conta criada — bem-vindo(a), ${name.split(' ')[0]}!`);
+        updateHeaderCounts();
+        navigate('account');
+      }
       break;
     }
     case 'do-logout':
-      State.user = null;
-      saveUser();
+      if (isSupabaseConfigured()) { await doLogoutReal(); }
+      else { State.user = null; saveUser(); }
       updateHeaderCounts();
       toast('Você saiu da sua conta');
       navigate('home');
@@ -2668,10 +2813,17 @@ document.addEventListener('click', (e) => {
       break;
 
     case 'save-profile': {
-      State.user.name = qs('#profile-name').value.trim() || State.user.name;
-      State.user.email = qs('#profile-email').value.trim() || State.user.email;
-      State.user.phone = qs('#profile-phone').value.trim();
-      saveUser();
+      const name = qs('#profile-name').value.trim() || State.user.name;
+      const phone = qs('#profile-phone').value.trim();
+      if (isSupabaseConfigured()) {
+        const ok = await saveProfileReal(name, phone);
+        if (!ok) { toast('Não foi possível salvar agora'); break; }
+      } else {
+        State.user.name = name;
+        State.user.email = qs('#profile-email').value.trim() || State.user.email;
+        State.user.phone = phone;
+        saveUser();
+      }
       updateHeaderCounts();
       toast('Perfil atualizado');
       renderAccount();
@@ -2694,38 +2846,51 @@ document.addEventListener('click', (e) => {
       };
       if (!data.cep || !data.street || !data.number) { toast('Preencha CEP, endereço e número'); break; }
       const editId = t.dataset.id;
-      if (editId) {
-        const addr = State.addresses.find(a => a.id === editId);
-        Object.assign(addr, data);
+      if (isSupabaseConfigured()) {
+        t.disabled = true;
+        const ok = await saveAddressReal(data, editId || null);
+        t.disabled = false;
+        if (!ok) { toast('Não foi possível salvar o endereço'); break; }
       } else {
-        data.id = 'addr-' + Date.now();
-        data.isDefault = State.addresses.length === 0;
-        State.addresses.push(data);
+        if (editId) {
+          const addr = State.addresses.find(a => a.id === editId);
+          Object.assign(addr, data);
+        } else {
+          data.id = 'addr-' + Date.now();
+          data.isDefault = State.addresses.length === 0;
+          State.addresses.push(data);
+        }
+        saveAddresses();
       }
-      saveAddresses();
       State.editingAddressId = null;
       toast('Endereço salvo');
       renderAccountPanel();
       break;
     }
     case 'delete-address': {
-      const wasDefault = State.addresses.find(a => a.id === t.dataset.id)?.isDefault;
-      State.addresses = State.addresses.filter(a => a.id !== t.dataset.id);
-      if (wasDefault && State.addresses.length) State.addresses[0].isDefault = true;
-      saveAddresses();
+      if (isSupabaseConfigured()) {
+        const ok = await deleteAddressReal(t.dataset.id);
+        if (!ok) { toast('Não foi possível remover agora'); break; }
+        if (!State.addresses.some(a => a.isDefault) && State.addresses.length) await setDefaultAddressReal(State.addresses[0].id);
+      } else {
+        const wasDefault = State.addresses.find(a => a.id === t.dataset.id)?.isDefault;
+        State.addresses = State.addresses.filter(a => a.id !== t.dataset.id);
+        if (wasDefault && State.addresses.length) State.addresses[0].isDefault = true;
+        saveAddresses();
+      }
       toast('Endereço removido');
       renderAccountPanel();
       break;
     }
     case 'set-default-address':
-      State.addresses.forEach(a => { a.isDefault = (a.id === t.dataset.id); });
-      saveAddresses();
+      if (isSupabaseConfigured()) { await setDefaultAddressReal(t.dataset.id); }
+      else { State.addresses.forEach(a => { a.isDefault = (a.id === t.dataset.id); }); saveAddresses(); }
       renderAccountPanel();
       break;
 
     case 'set-payment-pref':
-      State.paymentPref = t.dataset.pref;
-      savePaymentPref();
+      if (isSupabaseConfigured()) { await setPaymentPrefReal(t.dataset.pref); }
+      else { State.paymentPref = t.dataset.pref; savePaymentPref(); }
       toast('Preferência de pagamento salva');
       renderAccountPanel();
       break;
@@ -2831,7 +2996,10 @@ document.addEventListener('click', (e) => {
         items: State.cart.map(i => ({ name: i.name, price: i.price, qty: i.qty })),
         total: cartSubtotal(),
       };
-      if (isLoggedIn()) { State.orders.push(order); saveOrders(); }
+      if (isLoggedIn()) {
+        if (isSupabaseConfigured()) { await saveOrderReal(order); }
+        else { State.orders.push(order); saveOrders(); }
+      }
       State.lastOrder = order;
       State.cart = []; saveCart();
       navigate('success');
@@ -2935,6 +3103,15 @@ function boot() {
     .map(v => `<div class="view" id="view-${v}"></div>`).join('');
 
   navigate('home');
+
+  // restaura sessão do Supabase (se configurado e já estava logado) — roda
+  // em paralelo, sem travar a primeira tela.
+  if (isSupabaseConfigured()) {
+    initUserSession().then(() => {
+      updateHeaderCounts();
+      if (State.view === 'account') renderAccount();
+    });
+  }
 }
 document.addEventListener('DOMContentLoaded', boot);
 
