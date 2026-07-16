@@ -812,6 +812,16 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 .order-items{border-top:1px solid var(--border-light);padding-top:12px;}
 .order-item-row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:#333;}
 
+.cep-autofill-hint{display:block;font-size:11px;color:var(--green);margin-top:5px;min-height:14px;}
+.cep-found-note{
+  font-size:12px;color:var(--gray);margin-bottom:10px;background:var(--card-light);padding:8px 10px;border-radius:var(--radius);
+}
+.checkbox-row{
+  display:flex;align-items:center;gap:9px;font-size:13px;color:#333;margin-top:6px;cursor:pointer;
+}
+.checkbox-row input{width:16px;height:16px;flex-shrink:0;accent-color:var(--blue);}
+.checkbox-row input:disabled + span{color:var(--gray-light);}
+
 </style>
 </head>
 <body>
@@ -1311,6 +1321,73 @@ const SHIPPING_API_ENDPOINT = 'https://lkrucvfruwkjbrfcdvpm.supabase.co/function
 // Calcula o frete real via backend (SuperFrete). Se o endpoint ainda não
 // estiver configurado, cai num cálculo estimado local (mesma lógica de
 // antes) só para não travar a experiência enquanto você configura.
+/* ===================== VIACEP (preenchimento automático de endereço) =====================
+   API pública, gratuita, sem chave — pode ser chamada direto do navegador.
+   https://viacep.com.br
+   ========================================================================= */
+async function fetchCepData(cep) {
+  const clean = (cep || '').replace(/\D/g, '');
+  if (clean.length !== 8) return null;
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
+    const data = await res.json();
+    if (data.erro) return null;
+    return {
+      street: data.logradouro || '',
+      neighborhood: data.bairro || '',
+      city: data.localidade || '',
+      uf: data.uf || '',
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+// Liga um campo de CEP a uma busca automática do ViaCEP: assim que o
+// usuário termina de digitar 8 dígitos, chama onFound(dados, cepLimpo).
+function attachCepLookup(inputId, onFound) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  let lastLookedUp = '';
+  const handler = async () => {
+    const clean = input.value.replace(/\D/g, '');
+    if (clean.length !== 8 || clean === lastLookedUp) return;
+    lastLookedUp = clean;
+    const data = await fetchCepData(clean);
+    if (data) onFound(data, clean);
+  };
+  input.addEventListener('blur', handler);
+  input.addEventListener('input', () => {
+    const clean = input.value.replace(/\D/g, '');
+    if (clean.length === 8) handler();
+  });
+}
+function cepFoundNoteHtml(data) {
+  return `<div class="cep-found-note">📍 ${escapeHtml(data.neighborhood ? data.neighborhood + ', ' : '')}${escapeHtml(data.city)}/${escapeHtml(data.uf)}</div>`;
+}
+
+async function runProductCepCalc(cepRaw, foundAddressNote) {
+  const res = document.getElementById('cep-result');
+  if (!res) return;
+  if (cepRaw.length !== 8) { res.innerHTML = '<span style="color:var(--red)">Digite um CEP válido.</span>'; res.classList.add('show'); return; }
+  const p = findProduct(State.params.id);
+  if (!p || !p.pkg) {
+    res.innerHTML = '<span style="color:var(--gray)">Frete sob consulta para este item — fale conosco pelo WhatsApp.</span>';
+    res.classList.add('show');
+    return;
+  }
+  res.innerHTML = (foundAddressNote || '') + '<div class="ship-loading">Calculando...</div>';
+  res.classList.add('show');
+  const qtyNow = pdpState.qty || 1;
+  const pkg = { ...p.pkg, quantity: qtyNow, value: (p.price || 0) * qtyNow };
+  try {
+    const result = await fetchShippingOptions(cepRaw, pkg);
+    res.innerHTML = (foundAddressNote || '') + shippingResultHtml(result, (p.price || 0) * qtyNow >= 199);
+  } catch {
+    res.innerHTML = (foundAddressNote || '') + '<span style="color:var(--red)">Não foi possível calcular o frete agora.</span>';
+  }
+}
+
 async function fetchShippingOptions(cep, pkg) {
   const isConfigured = SHIPPING_API_ENDPOINT && SHIPPING_API_ENDPOINT.startsWith('http');
   if (isConfigured) {
@@ -2260,7 +2337,19 @@ function renderAccount() {
 function renderAccountPanel() {
   const panel = document.getElementById('account-panel');
   if (State.accountTab === 'perfil') panel.innerHTML = accountProfileHtml();
-  else if (State.accountTab === 'enderecos') panel.innerHTML = accountAddressesHtml();
+  else if (State.accountTab === 'enderecos') {
+    panel.innerHTML = accountAddressesHtml();
+    if (State.editingAddressId) {
+      attachCepLookup('addr-cep', (data) => {
+        qs('#addr-street').value = data.street;
+        qs('#addr-neighborhood').value = data.neighborhood;
+        qs('#addr-city').value = data.city;
+        qs('#addr-uf').value = data.uf;
+        const hint = document.getElementById('addr-cep-hint');
+        if (hint) hint.textContent = '✓ Endereço encontrado';
+      });
+    }
+  }
   else if (State.accountTab === 'pagamento') panel.innerHTML = accountPaymentHtml();
   else if (State.accountTab === 'pedidos') panel.innerHTML = accountOrdersHtml();
 }
@@ -2310,22 +2399,31 @@ function accountAddressesHtml() {
 }
 function addressFormHtml(a) {
   a = a || { label: '', cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', uf: '', isDefault: false };
+  const isOnlyOrFirst = a.id ? a.isDefault : State.addresses.length === 0;
   return `
     <div class="account-card">
       <h3 class="account-card-title">${a.id ? 'Editar endereço' : 'Novo endereço'}</h3>
       <div class="form-field full"><label>Apelido</label><input type="text" id="addr-label" placeholder="Ex: Casa, Trabalho" value="${escapeHtml(a.label)}"></div>
-      <div class="form-grid">
-        <div class="form-field"><label>CEP</label><input type="text" id="addr-cep" placeholder="00000-000" value="${escapeHtml(a.cep)}"></div>
-        <div class="form-field"><label>Cidade/UF</label><input type="text" id="addr-city" placeholder="Cuiabá" value="${escapeHtml(a.city)}"></div>
+      <div class="form-field full">
+        <label>CEP</label>
+        <input type="text" id="addr-cep" placeholder="00000-000" value="${escapeHtml(a.cep)}" maxlength="9">
+        <span class="cep-autofill-hint" id="addr-cep-hint"></span>
       </div>
-      <div class="form-field full"><label>UF</label><input type="text" id="addr-uf" placeholder="MT" maxlength="2" value="${escapeHtml(a.uf)}"></div>
       <div class="form-field full"><label>Endereço</label><input type="text" id="addr-street" placeholder="Rua, avenida..." value="${escapeHtml(a.street)}"></div>
       <div class="form-grid">
         <div class="form-field"><label>Número</label><input type="text" id="addr-number" value="${escapeHtml(a.number)}"></div>
         <div class="form-field"><label>Complemento</label><input type="text" id="addr-comp" value="${escapeHtml(a.complement || '')}"></div>
       </div>
       <div class="form-field full"><label>Bairro</label><input type="text" id="addr-neighborhood" value="${escapeHtml(a.neighborhood)}"></div>
-      <div style="display:flex;gap:10px;margin-top:8px;">
+      <div class="form-grid">
+        <div class="form-field"><label>Cidade</label><input type="text" id="addr-city" placeholder="Cuiabá" value="${escapeHtml(a.city)}"></div>
+        <div class="form-field"><label>UF</label><input type="text" id="addr-uf" placeholder="MT" maxlength="2" value="${escapeHtml(a.uf)}"></div>
+      </div>
+      <label class="checkbox-row">
+        <input type="checkbox" id="addr-default" ${isOnlyOrFirst ? 'checked disabled' : ''}>
+        <span>${isOnlyOrFirst ? 'Este é seu endereço padrão' : 'Definir como endereço padrão'}</span>
+      </label>
+      <div style="display:flex;gap:10px;margin-top:14px;">
         <button class="btn btn-outline" data-action="cancel-address-form">Cancelar</button>
         <button class="btn btn-dark" style="flex:1;min-width:0;" data-action="save-address" data-id="${a.id || ''}">Salvar endereço</button>
       </div>
@@ -2514,6 +2612,20 @@ function renderProduct() {
     });
   }
   if (p.configurable) mountProductConfigurator(p);
+
+  // CEP: busca automática de endereço (ViaCEP) + cálculo de frete assim que
+  // o cliente termina de digitar 8 dígitos.
+  attachCepLookup('cep-input', (data, clean) => {
+    runProductCepCalc(clean, cepFoundNoteHtml(data));
+  });
+  // Cliente logado com endereço padrão: já calcula o frete sozinho, sem
+  // precisar digitar nada.
+  if (isLoggedIn() && State.addresses.length && p.pkg) {
+    const def = State.addresses.find(a => a.isDefault) || State.addresses[0];
+    const cepInput = document.getElementById('cep-input');
+    if (cepInput) cepInput.value = def.cep.replace(/(\d{5})(\d{3})/, '$1-$2');
+    runProductCepCalc(def.cep.replace(/\D/g, ''), cepFoundNoteHtml({ neighborhood: def.neighborhood, city: def.city, uf: def.uf }));
+  }
 }
 
 /* ===================== CARRINHO (página) ===================== */
@@ -2638,6 +2750,11 @@ function renderCheckoutStep() {
         <button class="btn btn-primary" data-action="checkout-next" style="flex:1;min-width:0;">Continuar para pagamento</button>
       </div>
     `;
+    attachCepLookup('ck-cep', (data) => {
+      qs('#ck-city').value = `${data.city} / ${data.uf}`;
+      const addrField = qs('#ck-address');
+      if (!addrField.value.trim()) addrField.value = data.street + (data.neighborhood ? ', ' + data.neighborhood : '');
+    });
   } else {
     content.innerHTML = `
       <h3 style="font-size:18px;margin-bottom:18px;">Como você quer pagar?</h3>
@@ -2845,10 +2962,15 @@ document.addEventListener('click', async (e) => {
         neighborhood: qs('#addr-neighborhood').value.trim(),
       };
       if (!data.cep || !data.street || !data.number) { toast('Preencha CEP, endereço e número'); break; }
+      const wantsDefault = qs('#addr-default').checked;
       const editId = t.dataset.id;
       if (isSupabaseConfigured()) {
         t.disabled = true;
         const ok = await saveAddressReal(data, editId || null);
+        if (ok && wantsDefault) {
+          const savedId = editId || State.addresses[State.addresses.length - 1].id;
+          if (!State.addresses.find(a => a.id === savedId)?.isDefault) await setDefaultAddressReal(savedId);
+        }
         t.disabled = false;
         if (!ok) { toast('Não foi possível salvar o endereço'); break; }
       } else {
@@ -2860,6 +2982,7 @@ document.addEventListener('click', async (e) => {
           data.isDefault = State.addresses.length === 0;
           State.addresses.push(data);
         }
+        if (wantsDefault) { State.addresses.forEach(a => { a.isDefault = (a.id === (editId || data.id)); }); }
         saveAddresses();
       }
       State.editingAddressId = null;
@@ -2954,21 +3077,7 @@ document.addEventListener('click', async (e) => {
 
     case 'calc-cep': {
       const cepRaw = document.getElementById('cep-input').value.replace(/\D/g, '');
-      const res = document.getElementById('cep-result');
-      if (cepRaw.length !== 8) { res.innerHTML = '<span style="color:var(--red)">Digite um CEP válido.</span>'; res.classList.add('show'); break; }
-      const p = findProduct(State.params.id);
-      if (!p || !p.pkg) {
-        res.innerHTML = '<span style="color:var(--gray)">Frete sob consulta para este item — fale conosco pelo WhatsApp.</span>';
-        res.classList.add('show');
-        break;
-      }
-      res.innerHTML = '<div class="ship-loading">Calculando...</div>';
-      res.classList.add('show');
-      const qtyNow = pdpState.qty || 1;
-      const pkg = { ...p.pkg, quantity: qtyNow, value: (p.price || 0) * qtyNow };
-      fetchShippingOptions(cepRaw, pkg)
-        .then(result => { res.innerHTML = shippingResultHtml(result, (p.price || 0) * qtyNow >= 199); })
-        .catch(() => { res.innerHTML = '<span style="color:var(--red)">Não foi possível calcular o frete agora.</span>'; });
+      await runProductCepCalc(cepRaw);
       break;
     }
 
