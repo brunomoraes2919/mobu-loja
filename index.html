@@ -825,6 +825,15 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 .order-item-row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:#333;}
 
 .cep-autofill-hint{display:block;font-size:11px;color:var(--green);margin-top:5px;min-height:14px;}
+.cep-autofill-hint.is-error{color:var(--red);}
+.field-invalid{border-color:var(--red) !important;}
+.password-checklist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.password-checklist li{
+  display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gray-light);
+}
+.password-checklist li svg{width:12px;height:12px;flex-shrink:0;opacity:.4;}
+.password-checklist li.ok{color:var(--green);}
+.password-checklist li.ok svg{opacity:1;color:var(--green);}
 .cep-found-note{
   font-size:12px;color:var(--gray);margin-bottom:10px;background:var(--card-light);padding:8px 10px;border-radius:var(--radius);
 }
@@ -1362,20 +1371,25 @@ async function fetchCepData(cep) {
 
 // Liga um campo de CEP a uma busca automática do ViaCEP: assim que o
 // usuário termina de digitar 8 dígitos, chama onFound(dados, cepLimpo).
-function attachCepLookup(inputId, onFound) {
+function attachCepLookup(inputId, onFound, onError) {
   const input = document.getElementById(inputId);
   if (!input) return;
   let lastLookedUp = '';
+  const markInvalid = (isInvalid) => input.classList.toggle('field-invalid', !!isInvalid);
   const handler = async () => {
     const clean = input.value.replace(/\D/g, '');
-    if (clean.length !== 8 || clean === lastLookedUp) return;
+    if (clean.length === 0) { markInvalid(false); return; }
+    if (clean.length !== 8) { markInvalid(true); if (onError) onError('CEP incompleto — precisa ter 8 números.'); return; }
+    if (clean === lastLookedUp) return;
     lastLookedUp = clean;
     const data = await fetchCepData(clean);
-    if (data) onFound(data, clean);
+    if (data) { markInvalid(false); onFound(data, clean); }
+    else { markInvalid(true); if (onError) onError('CEP não encontrado — confira os números.'); }
   };
   input.addEventListener('blur', handler);
   input.addEventListener('input', () => {
     const clean = input.value.replace(/\D/g, '');
+    markInvalid(false);
     if (clean.length === 8) handler();
   });
 }
@@ -1783,8 +1797,11 @@ async function initUserSession() {
 }
 
 async function handleAuthCallback() {
-  // Fluxo PKCE: o link traz "?code=xxxx" na URL.
   const params = new URLSearchParams(window.location.search);
+  const hash = window.location.hash || '';
+  const isRecovery = params.get('type') === 'recovery' || hash.includes('type=recovery');
+
+  // Fluxo PKCE: o link traz "?code=xxxx" na URL.
   const code = params.get('code');
   if (code) {
     const { data, error } = await supabaseClient.auth.exchangeCodeForSession(code);
@@ -1793,6 +1810,7 @@ async function handleAuthCallback() {
       toast('Não foi possível confirmar automaticamente. Tente entrar com sua senha.', 'error');
       return false;
     }
+    if (isRecovery) { await loadAccountData(data.session.user.id); updateHeaderCounts(); State.authStatus = { type: 'set-new-password' }; navigate('auth-status'); return true; }
     await loadAccountData(data.session.user.id);
     updateHeaderCounts();
     showConfirmedThenGoToAccount();
@@ -1802,11 +1820,11 @@ async function handleAuthCallback() {
   // Fluxo antigo (implícito): o link traz "#access_token=...&type=signup" etc.
   // O supabase-js já processa esse hash sozinho ao carregar; aqui só
   // conferimos se a sessão realmente ficou de pé e avisamos o cliente.
-  const hash = window.location.hash || '';
   if (hash.includes('access_token') || hash.includes('type=signup') || hash.includes('type=recovery')) {
     const { data: { session } } = await supabaseClient.auth.getSession();
     cleanAuthParamsFromUrl();
     if (session) {
+      if (isRecovery) { await loadAccountData(session.user.id); updateHeaderCounts(); State.authStatus = { type: 'set-new-password' }; navigate('auth-status'); return true; }
       await loadAccountData(session.user.id);
       updateHeaderCounts();
       showConfirmedThenGoToAccount();
@@ -2026,6 +2044,35 @@ function passwordFieldHtml(id, placeholder) {
 
 // Validação de CPF (dígitos verificadores) — confere se o número é
 // matematicamente válido, não só o formato.
+// Senha forte: mínimo 8 caracteres, com maiúscula, minúscula, número e
+// caractere especial. Cada regra é checada separadamente pra dar feedback
+// claro de qual parte ainda falta.
+function passwordChecks(pw) {
+  pw = pw || '';
+  return {
+    length: pw.length >= 8,
+    upper: /[A-Z]/.test(pw),
+    lower: /[a-z]/.test(pw),
+    number: /[0-9]/.test(pw),
+    special: /[^A-Za-z0-9]/.test(pw),
+  };
+}
+function isStrongPassword(pw) {
+  const c = passwordChecks(pw);
+  return c.length && c.upper && c.lower && c.number && c.special;
+}
+function passwordChecklistHtml(pw) {
+  const c = passwordChecks(pw);
+  const item = (ok, label) => `<li class="${ok ? 'ok' : ''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>${label}</li>`;
+  return `<ul class="password-checklist">
+    ${item(c.length, 'Mínimo 8 caracteres')}
+    ${item(c.upper, 'Uma letra maiúscula')}
+    ${item(c.lower, 'Uma letra minúscula')}
+    ${item(c.number, 'Um número')}
+    ${item(c.special, 'Um caractere especial (!@#$...)')}
+  </ul>`;
+}
+
 function isValidCpf(cpfRaw) {
   const cpf = (cpfRaw || '').replace(/\D/g, '');
   if (cpf.length !== 11) return false;
@@ -2437,8 +2484,16 @@ function renderAuthPanel() {
     panel.innerHTML = `
       <div class="form-field full"><label>E-mail</label><input type="email" id="login-email" placeholder="voce@email.com"></div>
       <div class="form-field full"><label>Senha</label>${passwordFieldHtml('login-password', '••••••••')}</div>
+      <p class="auth-hint" style="text-align:right;margin:6px 0 14px;"><a href="#" data-action="auth-tab" data-tab="forgot">Esqueci minha senha</a></p>
       <button class="btn btn-dark btn-block" data-action="do-login">Entrar</button>
       <p class="auth-hint">Ainda não tem conta? <a href="#" data-action="auth-tab" data-tab="register">Criar conta</a></p>
+    `;
+  } else if (authTab === 'forgot') {
+    panel.innerHTML = `
+      <p style="font-size:13.5px;color:var(--gray);margin-bottom:18px;">Digite o e-mail da sua conta — vamos te enviar um link pra criar uma senha nova.</p>
+      <div class="form-field full"><label>E-mail</label><input type="email" id="forgot-email" placeholder="voce@email.com"></div>
+      <button class="btn btn-dark btn-block" data-action="do-forgot-password">Enviar link de recuperação</button>
+      <p class="auth-hint"><a href="#" data-action="auth-tab" data-tab="login">← Voltar pro login</a></p>
     `;
   } else {
     panel.innerHTML = `
@@ -2450,13 +2505,30 @@ function renderAuthPanel() {
         <input type="text" id="reg-cpf" placeholder="000.000.000-00" maxlength="14">
         <span class="cpf-error-hint" id="reg-cpf-hint">CPF inválido — confira os números.</span>
       </div>
-      <div class="form-field full"><label>Senha</label>${passwordFieldHtml('reg-password', 'Crie uma senha (mín. 6 caracteres)')}</div>
+      <div class="form-field full">
+        <label>Senha</label>${passwordFieldHtml('reg-password', 'Crie uma senha forte')}
+        <div id="reg-password-checklist"></div>
+      </div>
       <div class="form-field full"><label>Confirmar senha</label>${passwordFieldHtml('reg-password-confirm', 'Digite a senha de novo')}</div>
-      <button class="btn btn-dark btn-block" data-action="do-register">Criar conta</button>
+      <div class="cpf-error-hint" id="reg-password-match-hint">As senhas não coincidem.</div>
+      <button class="btn btn-dark btn-block" style="margin-top:16px;" data-action="do-register">Criar conta</button>
       <p class="auth-hint">Já tem conta? <a href="#" data-action="auth-tab" data-tab="login">Entrar</a></p>
     `;
     const cpfInput = qs('#reg-cpf');
     cpfInput.addEventListener('input', (e) => { e.target.value = formatCpf(e.target.value); });
+    cpfInput.addEventListener('blur', () => {
+      const hint = qs('#reg-cpf-hint');
+      hint.classList.toggle('show', cpfInput.value.trim() !== '' && !isValidCpf(cpfInput.value));
+    });
+    const pwInput = qs('#reg-password');
+    const checklistEl = qs('#reg-password-checklist');
+    checklistEl.innerHTML = passwordChecklistHtml('');
+    const checkPasswordsMatch = () => {
+      const a = qs('#reg-password').value, b = qs('#reg-password-confirm').value;
+      qs('#reg-password-match-hint').classList.toggle('show', b.length > 0 && a !== b);
+    };
+    pwInput.addEventListener('input', () => { checklistEl.innerHTML = passwordChecklistHtml(pwInput.value); checkPasswordsMatch(); });
+    qs('#reg-password-confirm').addEventListener('input', checkPasswordsMatch);
   }
 }
 
@@ -2492,7 +2564,10 @@ function renderAccountPanel() {
         qs('#addr-city').value = data.city;
         qs('#addr-uf').value = data.uf;
         const hint = document.getElementById('addr-cep-hint');
-        if (hint) hint.textContent = '✓ Endereço encontrado';
+        if (hint) { hint.textContent = '✓ Endereço encontrado'; hint.classList.remove('is-error'); }
+      }, (msg) => {
+        const hint = document.getElementById('addr-cep-hint');
+        if (hint) { hint.textContent = msg; hint.classList.add('is-error'); }
       });
     }
   }
@@ -2764,6 +2839,9 @@ function renderProduct() {
   // o cliente termina de digitar 8 dígitos.
   attachCepLookup('cep-input', (data, clean) => {
     runProductCepCalc(clean, cepFoundNoteHtml(data));
+  }, (msg) => {
+    const res = document.getElementById('cep-result');
+    if (res) { res.innerHTML = `<span style="color:var(--red)">${escapeHtml(msg)}</span>`; res.classList.add('show'); }
   });
   // Cliente logado com endereço padrão: já calcula o frete sozinho, sem
   // precisar digitar nada.
@@ -2854,10 +2932,11 @@ function renderCheckoutStep() {
         <div class="form-field full"><label>Nome completo</label><input type="text" id="ck-name" placeholder="Seu nome" value="${isLoggedIn() ? escapeHtml(u.name) : ''}"></div>
         <div class="form-field"><label>E-mail</label><input type="email" id="ck-email" placeholder="voce@email.com" value="${isLoggedIn() ? escapeHtml(u.email) : ''}"></div>
         <div class="form-field"><label>Telefone / WhatsApp</label><input type="text" id="ck-phone" placeholder="(65) 90000-0000" value="${isLoggedIn() ? escapeHtml(u.phone || '') : ''}"></div>
-        <div class="form-field"><label>CPF</label><input type="text" id="ck-cpf" placeholder="000.000.000-00"></div>
+        <div class="form-field"><label>CPF</label><input type="text" id="ck-cpf" placeholder="000.000.000-00" maxlength="14" value="${isLoggedIn() && u.cpf ? escapeHtml(formatCpf(u.cpf)) : ''}"></div>
       </div>
       <button class="btn btn-primary" data-action="checkout-next">Continuar para entrega</button>
     `;
+    qs('#ck-cpf').addEventListener('input', (e) => { e.target.value = formatCpf(e.target.value); });
   } else if (State.checkoutStep === 2) {
     const hasAddresses = isLoggedIn() && State.addresses.length > 0;
     if (hasAddresses && State.checkoutUseAddressId !== 'manual') {
@@ -2887,7 +2966,11 @@ function renderCheckoutStep() {
       <h3 style="font-size:18px;margin-bottom:18px;">Para onde enviamos?</h3>
       ${hasAddresses ? `<button class="link-btn" data-action="checkout-use-saved-address">← Usar endereço salvo</button>` : ''}
       <div class="form-grid">
-        <div class="form-field"><label>CEP</label><input type="text" id="ck-cep" placeholder="00000-000"></div>
+        <div class="form-field">
+          <label>CEP</label>
+          <input type="text" id="ck-cep" placeholder="00000-000">
+          <span class="cep-autofill-hint" id="ck-cep-hint"></span>
+        </div>
         <div class="form-field"><label>Cidade / UF</label><input type="text" id="ck-city" placeholder="Cuiabá / MT"></div>
         <div class="form-field full"><label>Endereço</label><input type="text" id="ck-address" placeholder="Rua, número, bairro"></div>
         <div class="form-field full"><label>Complemento (opcional)</label><input type="text" id="ck-comp" placeholder="Apto, bloco, referência"></div>
@@ -2901,6 +2984,11 @@ function renderCheckoutStep() {
       qs('#ck-city').value = `${data.city} / ${data.uf}`;
       const addrField = qs('#ck-address');
       if (!addrField.value.trim()) addrField.value = data.street + (data.neighborhood ? ', ' + data.neighborhood : '');
+      const hint = document.getElementById('ck-cep-hint');
+      if (hint) { hint.textContent = '✓ Endereço encontrado'; hint.classList.remove('is-error'); }
+    }, (msg) => {
+      const hint = document.getElementById('ck-cep-hint');
+      if (hint) { hint.textContent = msg; hint.classList.add('is-error'); }
     });
   } else {
     content.innerHTML = `
@@ -2961,6 +3049,37 @@ function renderAuthStatus() {
         <button class="btn btn-dark" style="margin-top:22px;" data-action="go-login-tab">Já confirmei — ir para o login</button>
       </div>
     `;
+  } else if (s.type === 'reset-sent') {
+    el.innerHTML = `
+      <div class="success-wrap">
+        <div class="success-check success-check-info">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+        </div>
+        <h1 style="font-size:24px;">Verifique seu e-mail</h1>
+        <p style="color:var(--gray);margin-top:8px;font-size:14.5px;">Enviamos um link para <b>${escapeHtml(s.email || '')}</b> pra você criar uma senha nova.</p>
+        <button class="btn btn-dark" style="margin-top:22px;" data-action="go-login-tab">Voltar pro login</button>
+      </div>
+    `;
+  } else if (s.type === 'set-new-password') {
+    el.innerHTML = `
+      <div class="success-wrap" style="max-width:400px;">
+        <div class="success-check success-check-info">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h1 style="font-size:22px;">Crie uma nova senha</h1>
+        <p style="color:var(--gray);margin:8px 0 20px;font-size:14px;">Escolha uma senha forte pra proteger sua conta.</p>
+        <div class="form-field full" style="text-align:left;">
+          <label>Nova senha</label>${passwordFieldHtml('new-password', 'Digite a nova senha')}
+          <div id="new-password-checklist"></div>
+        </div>
+        <div class="form-field full" style="text-align:left;"><label>Confirmar nova senha</label>${passwordFieldHtml('new-password-confirm', 'Digite de novo')}</div>
+        <button class="btn btn-dark btn-block" style="margin-top:14px;" data-action="do-set-new-password">Salvar nova senha</button>
+      </div>
+    `;
+    const pw = qs('#new-password');
+    const checklistEl = qs('#new-password-checklist');
+    checklistEl.innerHTML = passwordChecklistHtml('');
+    pw.addEventListener('input', () => { checklistEl.innerHTML = passwordChecklistHtml(pw.value); });
   } else {
     el.innerHTML = `
       <div class="success-wrap">
@@ -3025,6 +3144,44 @@ document.addEventListener('click', async (e) => {
     case 'go-favoritos': navigate('favoritos'); break;
     case 'go-account': navigate(isLoggedIn() ? 'account' : 'login'); break;
     case 'go-login-tab': authTab = 'login'; navigate('login'); break;
+
+    case 'do-forgot-password': {
+      const email = qs('#forgot-email').value.trim();
+      if (!email) { toast('Digite seu e-mail', 'error'); break; }
+      if (!isSupabaseConfigured()) { toast('Esse recurso precisa do backend configurado.', 'error'); break; }
+      t.disabled = true; t.textContent = 'Enviando...';
+      try {
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+        if (error) { toast(traduzErroAuth(error), 'error'); break; }
+        State.authStatus = { type: 'reset-sent', email };
+        navigate('auth-status');
+      } catch (e) {
+        console.error(e);
+        toast('Não foi possível enviar agora. Tente de novo.', 'error');
+      } finally {
+        t.disabled = false; t.textContent = 'Enviar link de recuperação';
+      }
+      break;
+    }
+    case 'do-set-new-password': {
+      const pw = qs('#new-password').value;
+      const pwConfirm = qs('#new-password-confirm').value;
+      if (!isStrongPassword(pw)) { toast('A senha ainda não atende todos os requisitos', 'error'); break; }
+      if (pw !== pwConfirm) { toast('As senhas não coincidem', 'error'); break; }
+      t.disabled = true; t.textContent = 'Salvando...';
+      try {
+        const { error } = await supabaseClient.auth.updateUser({ password: pw });
+        if (error) { toast(traduzErroAuth(error), 'error'); break; }
+        toast('Senha atualizada com sucesso!');
+        navigate('account');
+      } catch (e) {
+        console.error(e);
+        toast('Não foi possível salvar agora. Tente de novo.', 'error');
+      } finally {
+        t.disabled = false; t.textContent = 'Salvar nova senha';
+      }
+      break;
+    }
     case 'go-account-orders': State.accountTab = 'pedidos'; navigate(isLoggedIn() ? 'account' : 'login'); break;
 
     case 'auth-tab':
@@ -3075,7 +3232,7 @@ document.addEventListener('click', async (e) => {
       cpfHint.classList.remove('show');
       const password = qs('#reg-password').value;
       const passwordConfirm = qs('#reg-password-confirm').value;
-      if (!password || password.length < 6) { toast('Crie uma senha com pelo menos 6 caracteres', 'error'); break; }
+      if (!isStrongPassword(password)) { toast('Sua senha ainda não atende todos os requisitos — confira a lista abaixo do campo', 'error'); break; }
       if (password !== passwordConfirm) { toast('As senhas não são iguais — confira e tente de novo', 'error'); break; }
       if (isSupabaseConfigured()) {
         t.disabled = true; t.textContent = 'Criando conta...';
@@ -3285,7 +3442,22 @@ document.addEventListener('click', async (e) => {
       break;
     }
 
-    case 'checkout-next': State.checkoutStep = Math.min(3, State.checkoutStep + 1); renderCheckoutStep(); break;
+    case 'checkout-next': {
+      if (State.checkoutStep === 1) {
+        const name = qs('#ck-name').value.trim();
+        const email = qs('#ck-email').value.trim();
+        const cpf = qs('#ck-cpf').value.trim();
+        if (!name || !email) { toast('Preencha nome e e-mail', 'error'); break; }
+        if (!isValidCpf(cpf)) { toast('CPF inválido — confira os números', 'error'); break; }
+      }
+      if (State.checkoutStep === 2 && State.checkoutUseAddressId === 'manual') {
+        const cepOk = !qs('#ck-cep')?.classList.contains('field-invalid');
+        if (!qs('#ck-cep')?.value.trim() || !cepOk) { toast('Confira o CEP informado', 'error'); break; }
+      }
+      State.checkoutStep = Math.min(3, State.checkoutStep + 1);
+      renderCheckoutStep();
+      break;
+    }
     case 'checkout-back': State.checkoutStep = Math.max(1, State.checkoutStep - 1); renderCheckoutStep(); break;
     case 'pick-checkout-address': State.checkoutUseAddressId = t.dataset.id; renderCheckoutStep(); break;
     case 'checkout-manual-address': State.checkoutUseAddressId = 'manual'; renderCheckoutStep(); break;
