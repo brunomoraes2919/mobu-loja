@@ -571,6 +571,7 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
   margin:0 auto 22px;
 }
 .success-check svg{width:34px;height:34px;color:#fff;}
+.success-check-info{background:var(--blue);}
 .order-box{background:var(--card-light);border-radius:var(--radius-md);padding:22px;margin:26px 0;text-align:left;}
 .order-box .row{display:flex;justify-content:space-between;font-size:13.5px;padding:8px 0;}
 .demo-note{
@@ -1794,8 +1795,7 @@ async function handleAuthCallback() {
     }
     await loadAccountData(data.session.user.id);
     updateHeaderCounts();
-    toast('E-mail confirmado — você já está logado!');
-    navigate('account');
+    showConfirmedThenGoToAccount();
     return true;
   }
 
@@ -1809,8 +1809,7 @@ async function handleAuthCallback() {
     if (session) {
       await loadAccountData(session.user.id);
       updateHeaderCounts();
-      toast('E-mail confirmado — você já está logado!');
-      navigate('account');
+      showConfirmedThenGoToAccount();
       return true;
     }
     toast('Não foi possível confirmar automaticamente. Tente entrar com sua senha.', 'error');
@@ -1824,6 +1823,11 @@ function cleanAuthParamsFromUrl() {
   url.search = '';
   url.hash = '';
   window.history.replaceState({}, document.title, url.toString());
+}
+function showConfirmedThenGoToAccount() {
+  State.authStatus = { type: 'confirmed' };
+  navigate('auth-status');
+  setTimeout(() => { if (State.view === 'auth-status') navigate('account'); }, 2600);
 }
 
 async function loadAccountData(userId) {
@@ -2929,6 +2933,32 @@ function renderCheckoutStep() {
 }
 
 /* ===================== SUCESSO ===================== */
+function renderAuthStatus() {
+  const el = document.getElementById('view-auth-status');
+  const s = State.authStatus || { type: 'confirmed' };
+  if (s.type === 'pending') {
+    el.innerHTML = `
+      <div class="success-wrap">
+        <div class="success-check success-check-info">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+        </div>
+        <h1 style="font-size:24px;">Confira seu e-mail</h1>
+        <p style="color:var(--gray);margin-top:8px;font-size:14.5px;">Enviamos um link de confirmação para <b>${escapeHtml(s.email || '')}</b>. Abra sua caixa de entrada (e confira o spam, por garantia) e clique no link pra ativar sua conta.</p>
+        <button class="btn btn-dark" style="margin-top:22px;" data-action="go-login-tab">Já confirmei — ir para o login</button>
+      </div>
+    `;
+  } else {
+    el.innerHTML = `
+      <div class="success-wrap">
+        <div class="success-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <h1 style="font-size:24px;">E-mail confirmado!</h1>
+        <p style="color:var(--gray);margin-top:8px;font-size:14.5px;">Sua conta está ativa. Vamos te levar pra sua área de cliente.</p>
+        <button class="btn btn-dark" style="margin-top:22px;" data-action="go-account">Continuar agora</button>
+      </div>
+    `;
+  }
+}
+
 function renderSuccess() {
   const el = document.getElementById('view-success');
   const order = State.lastOrder || { orderNumber: 'MOBU-00000', items: [], total: 0 };
@@ -2958,7 +2988,7 @@ function renderSuccess() {
 const RENDERERS = {
   home: renderHome, catalog: renderCatalog, product: renderProduct,
   cart: renderCart, checkout: renderCheckout, success: renderSuccess, favoritos: renderFavoritos,
-  'ai-studio': renderAiStudio, login: renderLogin, account: renderAccount,
+  'ai-studio': renderAiStudio, login: renderLogin, account: renderAccount, 'auth-status': renderAuthStatus,
 };
 
 document.addEventListener('click', async (e) => {
@@ -2980,6 +3010,7 @@ document.addEventListener('click', async (e) => {
     case 'go-checkout': if (State.cart.length) navigate('checkout'); break;
     case 'go-favoritos': navigate('favoritos'); break;
     case 'go-account': navigate(isLoggedIn() ? 'account' : 'login'); break;
+    case 'go-login-tab': authTab = 'login'; navigate('login'); break;
     case 'go-account-orders': State.accountTab = 'pedidos'; navigate(isLoggedIn() ? 'account' : 'login'); break;
 
     case 'auth-tab':
@@ -3036,7 +3067,7 @@ document.addEventListener('click', async (e) => {
         t.disabled = true; t.textContent = 'Criando conta...';
         try {
           const result = await doRegister(name, email, phone, password, cpf);
-          if (result.needsConfirmation) { toast('Quase lá! Confirme seu e-mail para poder entrar.'); break; }
+          if (result.needsConfirmation) { State.authStatus = { type: 'pending', email }; navigate('auth-status'); break; }
           if (!result.ok) { toast(result.message, 'error'); break; }
           toast(`Conta criada — bem-vindo(a), ${name.split(' ')[0]}!`);
           updateHeaderCounts();
@@ -3355,7 +3386,7 @@ function boot() {
 
   // build views container
   const app = document.getElementById('app');
-  app.innerHTML = ['home','catalog','product','cart','checkout','success','favoritos','ai-studio','login','account']
+  app.innerHTML = ['home','catalog','product','cart','checkout','success','favoritos','ai-studio','login','account','auth-status']
     .map(v => `<div class="view" id="view-${v}"></div>`).join('');
 
   navigate('home');
