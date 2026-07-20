@@ -1833,12 +1833,19 @@ function showConfirmedThenGoToAccount() {
 async function loadAccountData(userId) {
   let { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
   if (!profile) {
-    // Conta sem perfil (órfã — geralmente por ter sido apagada só da tabela
-    // profiles, sem apagar o usuário em Authentication → Users). Em vez de
-    // travar o login, recria um perfil básico agora.
+    // Conta sem perfil ainda — o caso mais comum é o primeiro login logo
+    // após confirmar o e-mail (o perfil só é criado agora, nesse momento,
+    // porque antes da confirmação a conta não estava autenticada pra
+    // gravar na tabela). Buscamos nome/telefone/CPF reais que foram
+    // guardados no cadastro (user_metadata do Supabase Auth) em vez de
+    // inventar um nome a partir do e-mail.
     const { data: userData } = await supabaseClient.auth.getUser();
+    const meta = userData?.user?.user_metadata || {};
     const email = userData?.user?.email || '';
-    profile = { name: email.split('@')[0] || 'Cliente', email, phone: null, cpf: null, payment_pref: null };
+    profile = {
+      name: meta.name || email.split('@')[0] || 'Cliente',
+      email, phone: meta.phone || null, cpf: meta.cpf || null, payment_pref: null,
+    };
     await supabaseClient.from('profiles').insert({ id: userId, ...profile });
   }
   State.user = { id: userId, name: profile.name, email: profile.email, phone: profile.phone, cpf: profile.cpf };
@@ -1856,7 +1863,14 @@ async function loadAccountData(userId) {
 }
 
 async function doRegister(name, email, phone, password, cpf) {
-  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  // Guardamos nome/telefone/CPF junto no próprio Supabase Auth (user_metadata)
+  // no momento do cadastro — isso sobrevive à espera da confirmação de
+  // e-mail, mesmo sem conseguirmos gravar na tabela profiles ainda (a conta
+  // só é considerada autenticada depois que o cliente confirma).
+  const { data, error } = await supabaseClient.auth.signUp({
+    email, password,
+    options: { data: { name, phone, cpf } },
+  });
   if (error) return { ok: false, message: traduzErroAuth(error) };
   if (!data.session) return { ok: false, needsConfirmation: true };
   const { error: profErr } = await supabaseClient.from('profiles').insert({ id: data.user.id, name, email, phone, cpf });
