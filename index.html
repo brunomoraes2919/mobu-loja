@@ -2744,11 +2744,26 @@ async function loadPaymentMethods() {
   State.paymentMethodsLoaded = true;
   renderAccountPanel();
 }
+// Guarda as instâncias montadas dos campos seguros pra poder desmontar
+// direito antes de criar novas — o SDK do Mercado Pago se confunde se a
+// gente criar um campo novo sem desmontar o anterior (comum em sites como
+// o nosso, onde o formulário pode abrir mais de uma vez na mesma sessão).
+let mpMountedFields = null;
 function mountCardForm() {
   if (!mpClient) return;
-  mpClient.fields.create('cardNumber', { placeholder: '0000 0000 0000 0000' }).mount('mp-card-number');
-  mpClient.fields.create('expirationDate', { placeholder: 'MM/AA' }).mount('mp-expiration-date');
-  mpClient.fields.create('securityCode', { placeholder: 'CVV' }).mount('mp-security-code');
+  unmountCardForm();
+  mpMountedFields = {
+    cardNumber: mpClient.fields.create('cardNumber', { placeholder: '0000 0000 0000 0000' }).mount('mp-card-number'),
+    expirationDate: mpClient.fields.create('expirationDate', { placeholder: 'MM/AA' }).mount('mp-expiration-date'),
+    securityCode: mpClient.fields.create('securityCode', { placeholder: 'CVV' }).mount('mp-security-code'),
+  };
+}
+function unmountCardForm() {
+  if (!mpMountedFields) return;
+  try { mpMountedFields.cardNumber?.unmount(); } catch (e) { /* ignora se já não existe */ }
+  try { mpMountedFields.expirationDate?.unmount(); } catch (e) { /* ignora se já não existe */ }
+  try { mpMountedFields.securityCode?.unmount(); } catch (e) { /* ignora se já não existe */ }
+  mpMountedFields = null;
 }
 
 function accountOrdersHtml() {
@@ -3435,7 +3450,7 @@ document.addEventListener('click', async (e) => {
       break;
 
     case 'show-add-card': State.showAddCardForm = true; renderAccountPanel(); break;
-    case 'cancel-add-card': State.showAddCardForm = false; renderAccountPanel(); break;
+    case 'cancel-add-card': unmountCardForm(); State.showAddCardForm = false; renderAccountPanel(); break;
     case 'submit-add-card': {
       if (!mpClient) { toast('Pagamento com cartão ainda não está configurado.', 'error'); break; }
       const cardholderName = qs('#card-holder-name').value.trim();
@@ -3451,6 +3466,7 @@ document.addEventListener('click', async (e) => {
         });
         await callManageCards('save', { cardToken: tokenResult.id });
         toast('Cartão salvo com sucesso!');
+        unmountCardForm();
         State.showAddCardForm = false;
         State.paymentMethodsLoaded = false;
         await loadPaymentMethods();
