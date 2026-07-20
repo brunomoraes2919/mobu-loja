@@ -801,6 +801,9 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
   display:flex;align-items:center;background:#fff;
 }
 .mp-secure-field iframe{width:100%;height:100%;}
+.card-number-wrap{position:relative;}
+.card-number-wrap .mp-secure-field{padding-right:52px;}
+.card-brand-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);height:24px;width:auto;max-width:36px;pointer-events:none;}
 
 .orders-list{display:flex;flex-direction:column;gap:16px;}
 .order-card{background:var(--card-light);border-radius:var(--radius-md);padding:20px;}
@@ -2713,7 +2716,13 @@ function addCardFormHtml() {
     <div class="account-card">
       <h3 class="account-card-title">Adicionar cartão</h3>
       <div class="form-field full"><label>Nome no cartão</label><input type="text" id="card-holder-name" placeholder="Como está escrito no cartão"></div>
-      <div class="form-field full"><label>Número do cartão</label><div id="mp-card-number" class="mp-secure-field"></div></div>
+      <div class="form-field full">
+        <label>Número do cartão</label>
+        <div class="card-number-wrap">
+          <div id="mp-card-number" class="mp-secure-field"></div>
+          <img id="card-brand-icon" class="card-brand-icon" style="display:none;" alt="">
+        </div>
+      </div>
       <div class="form-grid">
         <div class="form-field"><label>Validade</label><div id="mp-expiration-date" class="mp-secure-field"></div></div>
         <div class="form-field"><label>CVV</label><div id="mp-security-code" class="mp-secure-field"></div></div>
@@ -2752,8 +2761,23 @@ let mpMountedFields = null;
 function mountCardForm() {
   if (!mpClient) return;
   unmountCardForm();
+  const cardNumberField = mpClient.fields.create('cardNumber', { placeholder: '0000 0000 0000 0000' }).mount('mp-card-number');
+  cardNumberField.on('binChange', async (data) => {
+    const icon = document.getElementById('card-brand-icon');
+    if (!icon) return;
+    if (!data || !data.bin) { icon.style.display = 'none'; return; }
+    try {
+      const { results } = await mpClient.getPaymentMethods({ bin: data.bin });
+      const method = results && results[0];
+      const thumb = method && (method.secure_thumbnail || method.thumbnail);
+      if (thumb) { icon.src = thumb; icon.style.display = 'block'; }
+      else { icon.style.display = 'none'; }
+    } catch (e) {
+      icon.style.display = 'none';
+    }
+  });
   mpMountedFields = {
-    cardNumber: mpClient.fields.create('cardNumber', { placeholder: '0000 0000 0000 0000' }).mount('mp-card-number'),
+    cardNumber: cardNumberField,
     expirationDate: mpClient.fields.create('expirationDate', { placeholder: 'MM/AA' }).mount('mp-expiration-date'),
     securityCode: mpClient.fields.create('securityCode', { placeholder: 'CVV' }).mount('mp-security-code'),
   };
