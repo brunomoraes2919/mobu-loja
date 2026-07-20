@@ -1242,6 +1242,33 @@ async function callManageCards(action, extra) {
   return data;
 }
 
+const PROCESS_PAYMENT_ENDPOINT = 'https://lkrucvfruwkjbrfcdvpm.supabase.co/functions/v1/process-payment';
+async function callProcessPayment(payload) {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) throw new Error('not_authenticated');
+  const res = await fetch(PROCESS_PAYMENT_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+    body: JSON.stringify(payload),
+  });
+  return await res.json();
+}
+// Traduz os motivos mais comuns de recusa do Mercado Pago pra uma
+// mensagem que o cliente entenda, em vez do código técnico.
+function traduzErroPagamento(status, statusDetail) {
+  const map = {
+    cc_rejected_insufficient_amount: 'Cartão sem limite suficiente para essa compra.',
+    cc_rejected_bad_filled_security_code: 'CVV incorreto — confira e tente de novo.',
+    cc_rejected_bad_filled_date: 'Validade do cartão incorreta.',
+    cc_rejected_call_for_authorize: 'O banco emissor pediu autorização — ligue pro seu banco ou tente outro cartão.',
+    cc_rejected_card_disabled: 'Esse cartão está desabilitado — tente outro ou contate o banco.',
+    cc_rejected_high_risk: 'Pagamento recusado por segurança. Tente outro cartão.',
+    cc_rejected_max_attempts: 'Muitas tentativas com esse cartão. Tente outro ou mais tarde.',
+  };
+  if (status === 'in_process' || status === 'pending') return 'Pagamento em análise — você será avisado assim que for aprovado.';
+  return map[statusDetail] || 'Pagamento recusado. Confira os dados do cartão ou tente outro.';
+}
+
 /* ===================== DADOS ===================== */
 
 const CATEGORIES = [
@@ -1788,6 +1815,9 @@ const State = {
   paymentMethodsLoaded: false,
   loadingCards: false,
   showAddCardForm: false,
+  checkoutSelectedCardId: null,
+  checkoutBuyerInfo: null,
+  checkoutManualAddress: null,
   orders: JSON.parse(localStorage.getItem('mobu_orders') || '[]'),
   accountTab: 'perfil',
   editingAddressId: null,
@@ -2758,9 +2788,13 @@ function addCardFormHtml() {
     </div>
   `;
 }
+function rerenderCurrentPaymentUi() {
+  if (State.view === 'account') renderAccountPanel();
+  else if (State.view === 'checkout') renderCheckoutStep();
+}
 async function loadPaymentMethods() {
   State.loadingCards = true;
-  renderAccountPanel();
+  rerenderCurrentPaymentUi();
   try {
     const { cards } = await callManageCards('list');
     State.paymentMethods = cards || [];
@@ -2770,7 +2804,7 @@ async function loadPaymentMethods() {
   }
   State.loadingCards = false;
   State.paymentMethodsLoaded = true;
-  renderAccountPanel();
+  rerenderCurrentPaymentUi();
 }
 // Guarda as instâncias montadas dos campos seguros pra poder desmontar
 // direito antes de criar novas — o SDK do Mercado Pago se confunde se a
@@ -2807,6 +2841,23 @@ function unmountCardForm() {
   try { mpMountedFields.expirationDate?.unmount(); } catch (e) { /* ignora se já não existe */ }
   try { mpMountedFields.securityCode?.unmount(); } catch (e) { /* ignora se já não existe */ }
   mpMountedFields = null;
+}
+
+// Campo de CVV isolado, usado no checkout pra cobrar um cartão JÁ salvo —
+// o Mercado Pago exige recapturar o código de segurança por segurança,
+// mesmo pra cartão salvo, mas não precisa pedir número/validade de novo.
+let mpCheckoutCvvField = null;
+function mountCheckoutCvvField() {
+  if (!mpClient) return;
+  unmountCheckoutCvvField();
+  const el = document.getElementById('mp-checkout-cvv');
+  if (!el) return;
+  mpCheckoutCvvField = mpClient.fields.create('securityCode', { placeholder: 'CVV' }).mount('mp-checkout-cvv');
+}
+function unmountCheckoutCvvField() {
+  if (!mpCheckoutCvvField) return;
+  try { mpCheckoutCvvField.unmount(); } catch (e) { /* ignora se já não existe */ }
+  mpCheckoutCvvField = null;
 }
 
 function accountOrdersHtml() {
@@ -3016,10 +3067,57 @@ function renderCart() {
 }
 
 /* ===================== CHECKOUT ===================== */
+function cartaoPanelHtml() {
+  if (!isLoggedIn()) {
+    return `<p class="checkout-hint"><a href="#" data-action="go-account">Entre na sua conta</a> pra pagar com um cartão salvo.</p>`;
+  }
+  if (State.loadingCards) {
+    return `<p class="account-empty-hint">Carregando seus cartões...</p>`;
+  }
+  if (!State.paymentMethods.length) {
+    return `<p class="checkout-hint">Você ainda não tem cartão salvo. <a href="#" data-action="go-account">Adicionar cartão</a> antes de continuar.</p>`;
+  }
+  return `
+    <div class="saved-address-list">
+      ${State.paymentMethods.map(c => `
+        <button class="saved-address-option ${State.checkoutSelectedCardId === c.id ? 'selected' : ''}" data-action="pick-checkout-card" data-id="${c.id}">
+          <b>${escapeHtml((c.brand || '').replace(/^\w/, m => m.toUpperCase()))} •••• ${escapeHtml(c.last_four || '')}</b>
+          <p>Validade ${escapeHtml(String(c.exp_month || '').padStart(2, '0'))}/${escapeHtml(String(c.exp_year || ''))}</p>
+        </button>
+      `).join('')}
+    </div>
+    <div class="form-grid" style="margin-top:14px;">
+      <div class="form-field">
+        <label>CVV</label>
+        <div id="mp-checkout-cvv" class="mp-secure-field"></div>
+      </div>
+      <div class="form-field"><label>Parcelas</label>
+        <select id="checkout-installments">
+          <option value="1">1x sem juros</option>
+          <option value="2">2x sem juros</option>
+          <option value="3" selected>3x sem juros</option>
+        </select>
+      </div>
+    </div>
+  `;
+}
+
+function getCheckoutShippingAddressSnapshot() {
+  if (State.checkoutUseAddressId && State.checkoutUseAddressId !== 'manual') {
+    const addr = State.addresses.find(a => a.id === State.checkoutUseAddressId);
+    if (addr) return { ...addr };
+  }
+  if (State.checkoutManualAddress) return { ...State.checkoutManualAddress };
+  return null;
+}
+
 function renderCheckout() {
   if (!State.cart.length) { navigate('cart'); return; }
   State.checkoutStep = 1;
   State.checkoutUseAddressId = null;
+  State.checkoutSelectedCardId = null;
+  State.checkoutBuyerInfo = null;
+  State.checkoutManualAddress = null;
   State.activePayTab = State.paymentPref || 'pix';
   const el = document.getElementById('view-checkout');
   el.innerHTML = `
@@ -3145,15 +3243,7 @@ function renderCheckoutStep() {
         </div>
       </div>
       <div class="pay-panel ${State.activePayTab==='cartao'?'active':''}" data-panel="cartao">
-        <div class="form-grid">
-          <div class="form-field full"><label>Número do cartão</label><input type="text" placeholder="0000 0000 0000 0000"></div>
-          <div class="form-field full"><label>Nome impresso no cartão</label><input type="text" placeholder="Como está no cartão"></div>
-          <div class="form-field"><label>Validade</label><input type="text" placeholder="MM/AA"></div>
-          <div class="form-field"><label>CVV</label><input type="text" placeholder="000"></div>
-          <div class="form-field full"><label>Parcelas</label>
-            <select><option>1x sem juros</option><option>2x sem juros</option><option selected>3x sem juros</option></select>
-          </div>
-        </div>
+        ${cartaoPanelHtml()}
       </div>
       <div class="pay-panel ${State.activePayTab==='boleto'?'active':''}" data-panel="boleto">
         <p style="font-size:13.5px;color:var(--gray);line-height:1.6;">O boleto é gerado após a confirmação e vence em 3 dias úteis. O pedido é separado assim que o pagamento é compensado.</p>
@@ -3163,6 +3253,17 @@ function renderCheckoutStep() {
         <button class="btn btn-primary" data-action="checkout-finish" style="flex:1;min-width:0;">Confirmar pedido</button>
       </div>
     `;
+    if (State.activePayTab === 'cartao') {
+      if (!isLoggedIn()) { /* nada a carregar */ }
+      else if (!State.paymentMethodsLoaded && !State.loadingCards) { loadPaymentMethods(); }
+      else if (State.paymentMethods.length) {
+        if (!State.checkoutSelectedCardId) {
+          const def = State.paymentMethods.find(c => c.is_default) || State.paymentMethods[0];
+          State.checkoutSelectedCardId = def.id;
+        }
+        mountCheckoutCvvField();
+      }
+    }
   }
 }
 
@@ -3627,10 +3728,17 @@ document.addEventListener('click', async (e) => {
         const cpf = qs('#ck-cpf').value.trim();
         if (!name || !email) { toast('Preencha nome e e-mail', 'error'); break; }
         if (!isValidCpf(cpf)) { toast('CPF inválido — confira os números', 'error'); break; }
+        State.checkoutBuyerInfo = { name, email, phone: qs('#ck-phone').value.trim(), cpf };
       }
       if (State.checkoutStep === 2 && State.checkoutUseAddressId === 'manual') {
         const cepOk = !qs('#ck-cep')?.classList.contains('field-invalid');
         if (!qs('#ck-cep')?.value.trim() || !cepOk) { toast('Confira o CEP informado', 'error'); break; }
+        State.checkoutManualAddress = {
+          cep: qs('#ck-cep').value.trim(),
+          city: qs('#ck-city').value.trim(),
+          address: qs('#ck-address').value.trim(),
+          complement: qs('#ck-comp').value.trim(),
+        };
       }
       State.checkoutStep = Math.min(3, State.checkoutStep + 1);
       renderCheckoutStep();
@@ -3642,11 +3750,48 @@ document.addEventListener('click', async (e) => {
     case 'checkout-use-saved-address': State.checkoutUseAddressId = null; renderCheckoutStep(); break;
     case 'checkout-finish': {
       const orderNumber = 'MOBU-' + Math.floor(10000 + Math.random() * 89999);
-      const order = {
-        id: orderNumber, orderNumber, createdAt: Date.now(),
-        items: State.cart.map(i => ({ name: i.name, price: i.price, qty: i.qty })),
-        total: cartSubtotal(),
-      };
+      const items = State.cart.map(i => ({ name: i.name, price: i.price, qty: i.qty }));
+      const total = cartSubtotal();
+      const shippingAddress = getCheckoutShippingAddressSnapshot();
+
+      if (State.activePayTab === 'cartao') {
+        if (!isLoggedIn()) { toast('Entre na sua conta pra pagar com cartão salvo', 'error'); break; }
+        const selectedCard = State.paymentMethods.find(c => c.id === State.checkoutSelectedCardId);
+        if (!selectedCard) { toast('Escolha um cartão salvo', 'error'); break; }
+        if (!mpClient) { toast('Pagamento com cartão ainda não está configurado.', 'error'); break; }
+
+        t.disabled = true; t.textContent = 'Processando pagamento...';
+        try {
+          const tokenResult = await mpClient.fields.createCardToken({ cardId: selectedCard.mp_card_id });
+          const result = await callProcessPayment({
+            token: tokenResult.id,
+            amount: total,
+            installments: parseInt(qs('#checkout-installments')?.value || '1', 10),
+            paymentMethodId: selectedCard.brand,
+            orderItems: items,
+            shippingAddress,
+            orderNumber,
+          });
+          if (!result.ok) {
+            toast(traduzErroPagamento(result.status, result.statusDetail), 'error');
+            t.disabled = false; t.textContent = 'Confirmar pedido';
+            break;
+          }
+          unmountCheckoutCvvField();
+          State.lastOrder = { id: orderNumber, orderNumber, createdAt: Date.now(), items, total };
+          State.cart = []; saveCart();
+          navigate('success');
+        } catch (e) {
+          console.error(e);
+          toast('Não foi possível processar o pagamento. Confira os dados e tente de novo.', 'error');
+          t.disabled = false; t.textContent = 'Confirmar pedido';
+        }
+        break;
+      }
+
+      // Pix e Boleto continuam simulados por enquanto (nenhuma cobrança real
+      // acontece nesses dois ainda).
+      const order = { id: orderNumber, orderNumber, createdAt: Date.now(), items, total, shippingAddress };
       if (isLoggedIn()) {
         if (isSupabaseConfigured()) { await saveOrderReal(order); }
         else { State.orders.push(order); saveOrders(); }
@@ -3658,9 +3803,13 @@ document.addEventListener('click', async (e) => {
     }
 
     case 'pay-tab':
+      if (State.activePayTab === 'cartao' && t.dataset.tab !== 'cartao') unmountCheckoutCvvField();
       State.activePayTab = t.dataset.tab;
-      qsa('.pay-tab').forEach(pt => pt.classList.toggle('active', pt === t));
-      qsa('.pay-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === t.dataset.tab));
+      renderCheckoutStep();
+      break;
+    case 'pick-checkout-card':
+      State.checkoutSelectedCardId = t.dataset.id;
+      renderCheckoutStep();
       break;
     case 'copy-pix': toast('Código Pix copiado'); break;
 
