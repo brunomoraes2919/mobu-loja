@@ -564,6 +564,13 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
   padding:10px 12px;font-family:var(--font-mono);font-size:11px;color:var(--gray);align-items:center;
 }
 .pix-code button{border:0;background:var(--black);color:#fff;border-radius:var(--radius);padding:6px 10px;font-size:11px;flex-shrink:0;}
+.pix-qr-real{width:160px;height:160px;border:1px solid var(--border-light);border-radius:var(--radius);margin:0 auto 16px;display:block;}
+.pix-waiting-note{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12.5px;color:var(--gray);margin-top:14px;}
+.pix-spinner{
+  width:14px;height:14px;border:2px solid var(--border-light);border-top-color:var(--blue);border-radius:50%;
+  display:inline-block;animation:pix-spin .8s linear infinite;
+}
+@keyframes pix-spin{to{transform:rotate(360deg);}}
 
 /* success page */
 .success-wrap{max-width:560px;margin:0 auto;padding:70px 20px;text-align:center;}
@@ -2847,6 +2854,39 @@ function unmountCardForm() {
 // o Mercado Pago exige recapturar o código de segurança por segurança,
 // mesmo pra cartão salvo, mas não precisa pedir número/validade de novo.
 let mpCheckoutCvvField = null;
+let pixPollInterval = null;
+function stopPixPolling() {
+  if (pixPollInterval) { clearInterval(pixPollInterval); pixPollInterval = null; }
+}
+function renderPixWaiting(qrCodeBase64, qrCode) {
+  const el = document.getElementById('pix-content');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="pix-box">
+      ${qrCodeBase64 ? `<img class="pix-qr-real" src="data:image/png;base64,${qrCodeBase64}" alt="QR Code Pix">` : ''}
+      <p style="font-size:13px;color:var(--gray);margin-bottom:12px;">Escaneie o QR code ou copie o código abaixo no app do seu banco.</p>
+      <div class="pix-code"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(qrCode || '')}</span><button data-action="copy-pix" data-code="${escapeHtml(qrCode || '')}">Copiar</button></div>
+      <p class="pix-waiting-note"><span class="pix-spinner"></span> Aguardando confirmação do pagamento...</p>
+    </div>
+  `;
+}
+async function startPixPolling(paymentId) {
+  stopPixPolling();
+  pixPollInterval = setInterval(async () => {
+    try {
+      const result = await callProcessPayment({ action: 'check-status', paymentId });
+      if (result.approved) {
+        stopPixPolling();
+        toast('Pagamento Pix confirmado!');
+        State.cart = []; saveCart();
+        navigate('success');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, 3500);
+}
+
 function mountCheckoutCvvField() {
   if (!mpClient) return;
   unmountCheckoutCvvField();
@@ -3132,6 +3172,7 @@ function getCheckoutShippingAddressSnapshot() {
 
 function renderCheckout() {
   if (!State.cart.length) { navigate('cart'); return; }
+  stopPixPolling();
   State.checkoutStep = 1;
   State.checkoutUseAddressId = null;
   State.checkoutSelectedCardId = null;
@@ -3254,10 +3295,8 @@ function renderCheckoutStep() {
         </button>
       </div>
       <div class="pay-panel ${State.activePayTab==='pix'?'active':''}" data-panel="pix">
-        <div class="pix-box">
-          <div class="pix-qr"><svg width="90" height="90" viewBox="0 0 90 90"><rect width="90" height="90" fill="#fff"/><g fill="#111"><rect x="4" y="4" width="24" height="24"/><rect x="62" y="4" width="24" height="24"/><rect x="4" y="62" width="24" height="24"/><rect x="10" y="10" width="12" height="12" fill="#fff"/><rect x="68" y="10" width="12" height="12" fill="#fff"/><rect x="10" y="68" width="12" height="12" fill="#fff"/><rect x="36" y="10" width="6" height="6"/><rect x="46" y="20" width="6" height="6"/><rect x="36" y="36" width="16" height="16"/><rect x="60" y="40" width="6" height="6"/><rect x="70" y="50" width="6" height="6"/><rect x="40" y="60" width="6" height="6"/><rect x="55" y="65" width="16" height="6"/><rect x="60" y="75" width="6" height="6"/></g></svg></div>
-          <p style="font-size:13px;color:var(--gray);margin-bottom:12px;">Escaneie o QR code ou copie o código abaixo no app do seu banco.</p>
-          <div class="pix-code"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">00020126580014BR.GOV.BCB.PIX...MOBU3D...5204000053039865802BR</span><button data-action="copy-pix">Copiar</button></div>
+        <div id="pix-content">
+          <p style="font-size:13.5px;color:var(--gray);line-height:1.6;">Ao confirmar, geramos um código Pix pra você pagar direto no app do seu banco. A aprovação é automática assim que o pagamento cair.</p>
           <p style="font-size:12px;color:var(--green);font-weight:700;margin-top:12px;">5% de desconto já aplicado no total.</p>
         </div>
       </div>
@@ -3265,7 +3304,10 @@ function renderCheckoutStep() {
         ${cartaoPanelHtml()}
       </div>
       <div class="pay-panel ${State.activePayTab==='boleto'?'active':''}" data-panel="boleto">
-        <p style="font-size:13.5px;color:var(--gray);line-height:1.6;">O boleto é gerado após a confirmação e vence em 3 dias úteis. O pedido é separado assim que o pagamento é compensado.</p>
+        <div id="boleto-content">
+          <p style="font-size:13.5px;color:var(--gray);line-height:1.6;">O boleto é gerado após a confirmação e vence em 3 dias úteis. O pedido é separado assim que o pagamento é compensado.</p>
+          ${State.checkoutUseAddressId === 'manual' ? '<p class="checkout-hint" style="color:var(--red);background:#fdeeee;">Boleto ainda não funciona com endereço digitado na hora — <a href="#" data-action="checkout-use-saved-address">use um endereço salvo</a>, ou volte e escolha um.</p>' : ''}
+        </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button class="btn btn-outline" data-action="checkout-back">Voltar</button>
@@ -3360,13 +3402,15 @@ function renderSuccess() {
         <div class="row"><span>Total</span><b class="mono">${fmtPrice(order.total)}</b></div>
         <div class="row"><span>Previsão de envio</span><span>3-5 dias úteis</span></div>
       </div>
+      ${order.boletoUrl ? `<a href="${order.boletoUrl}" target="_blank" rel="noopener" class="btn btn-outline" style="margin-bottom:10px;display:block;text-decoration:none;">Baixar boleto</a>` : ''}
       ${isLoggedIn()
         ? `<button class="btn btn-outline" style="margin-bottom:10px;" data-action="go-account-orders">Ver meus pedidos</button>`
         : `<p class="checkout-hint" style="margin-bottom:14px;"><a href="#" data-action="go-account">Crie uma conta</a> para acompanhar este pedido depois.</p>`}
       <button class="btn btn-dark" data-action="go-home">Voltar para a loja</button>
+      ${!isSupabaseConfigured() ? `
       <div class="demo-note">
         <b>Nota de demonstração:</b> este é um protótipo de front-end. Nenhum pagamento real foi processado e nenhum e-mail foi enviado — é o momento de conectar um backend, um gateway de pagamento (Pix/cartão) e um serviço de e-mail transacional para colocar no ar de verdade.
-      </div>
+      </div>` : ''}
     </div>
   `;
 }
@@ -3765,7 +3809,7 @@ document.addEventListener('click', async (e) => {
       renderCheckoutStep();
       break;
     }
-    case 'checkout-back': State.checkoutStep = Math.max(1, State.checkoutStep - 1); renderCheckoutStep(); break;
+    case 'checkout-back': stopPixPolling(); State.checkoutStep = Math.max(1, State.checkoutStep - 1); renderCheckoutStep(); break;
     case 'pick-checkout-address': State.checkoutUseAddressId = t.dataset.id; renderCheckoutStep(); break;
     case 'checkout-manual-address': State.checkoutUseAddressId = 'manual'; renderCheckoutStep(); break;
     case 'checkout-use-saved-address': State.checkoutUseAddressId = null; renderCheckoutStep(); break;
@@ -3808,23 +3852,78 @@ document.addEventListener('click', async (e) => {
           t.disabled = false; t.textContent = 'Confirmar pedido';
         }
         break;
+      } else if (State.activePayTab === 'pix') {
+        if (!isLoggedIn()) { toast('Entre na sua conta pra pagar com Pix', 'error'); break; }
+        if (!isSupabaseConfigured()) { toast('Pagamento via Pix ainda não está configurado.', 'error'); break; }
+        t.disabled = true; t.textContent = 'Gerando código Pix...';
+        try {
+          const result = await callProcessPayment({
+            paymentMethod: 'pix',
+            amount: total,
+            buyerName: (State.checkoutBuyerInfo && State.checkoutBuyerInfo.name) || (State.user && State.user.name),
+            orderItems: items,
+            shippingAddress,
+            orderNumber,
+          });
+          if (!result.pix || !result.pix.qrCodeBase64) {
+            toast('Não foi possível gerar o Pix agora. Tente de novo.', 'error');
+            t.disabled = false; t.textContent = 'Confirmar pedido';
+            break;
+          }
+          State.lastOrder = { id: orderNumber, orderNumber, createdAt: Date.now(), items, total };
+          renderPixWaiting(result.pix.qrCodeBase64, result.pix.qrCode);
+          startPixPolling(result.paymentId);
+          t.textContent = 'Aguardando pagamento...';
+        } catch (e) {
+          console.error(e);
+          toast('Não foi possível gerar o Pix agora. Tente de novo.', 'error');
+          t.disabled = false; t.textContent = 'Confirmar pedido';
+        }
+      } else if (State.activePayTab === 'boleto') {
+        if (!isLoggedIn()) { toast('Entre na sua conta pra pagar com boleto', 'error'); break; }
+        if (!isSupabaseConfigured()) { toast('Boleto ainda não está configurado.', 'error'); break; }
+        if (State.checkoutUseAddressId === 'manual') { toast('Escolha um endereço salvo pra gerar o boleto', 'error'); break; }
+        t.disabled = true; t.textContent = 'Gerando boleto...';
+        try {
+          const result = await callProcessPayment({
+            paymentMethod: 'boleto',
+            amount: total,
+            buyerName: (State.checkoutBuyerInfo && State.checkoutBuyerInfo.name) || (State.user && State.user.name),
+            orderItems: items,
+            shippingAddress,
+            orderNumber,
+          });
+          if (!result.boleto || !result.boleto.url) {
+            toast('Não foi possível gerar o boleto agora. Tente de novo.', 'error');
+            t.disabled = false; t.textContent = 'Confirmar pedido';
+            break;
+          }
+          State.lastOrder = { id: orderNumber, orderNumber, createdAt: Date.now(), items, total, boletoUrl: result.boleto.url };
+          State.cart = []; saveCart();
+          navigate('success');
+        } catch (e) {
+          console.error(e);
+          toast('Não foi possível gerar o boleto agora. Tente de novo.', 'error');
+          t.disabled = false; t.textContent = 'Confirmar pedido';
+        }
+      } else {
+        // modo de demonstração (Supabase não configurado) — mantém o
+        // comportamento simulado de antes.
+        const order = { id: orderNumber, orderNumber, createdAt: Date.now(), items, total, shippingAddress };
+        if (isLoggedIn()) {
+          if (isSupabaseConfigured()) { await saveOrderReal(order); }
+          else { State.orders.push(order); saveOrders(); }
+        }
+        State.lastOrder = order;
+        State.cart = []; saveCart();
+        navigate('success');
       }
-
-      // Pix e Boleto continuam simulados por enquanto (nenhuma cobrança real
-      // acontece nesses dois ainda).
-      const order = { id: orderNumber, orderNumber, createdAt: Date.now(), items, total, shippingAddress };
-      if (isLoggedIn()) {
-        if (isSupabaseConfigured()) { await saveOrderReal(order); }
-        else { State.orders.push(order); saveOrders(); }
-      }
-      State.lastOrder = order;
-      State.cart = []; saveCart();
-      navigate('success');
       break;
     }
 
     case 'pay-tab':
       if (State.activePayTab === 'cartao' && t.dataset.tab !== 'cartao') unmountCheckoutCvvField();
+      if (State.activePayTab === 'pix' && t.dataset.tab !== 'pix') stopPixPolling();
       State.activePayTab = t.dataset.tab;
       renderCheckoutStep();
       break;
@@ -3832,7 +3931,10 @@ document.addEventListener('click', async (e) => {
       State.checkoutSelectedCardId = t.dataset.id;
       renderCheckoutStep();
       break;
-    case 'copy-pix': toast('Código Pix copiado'); break;
+    case 'copy-pix':
+      if (t.dataset.code) { navigator.clipboard?.writeText(t.dataset.code).catch(() => {}); }
+      toast('Código Pix copiado');
+      break;
 
     case 'whatsapp': window.open(waLink('Olá! Vim do site da MOBU e quero saber mais.'), '_blank'); break;
 
