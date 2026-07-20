@@ -2860,6 +2860,27 @@ function unmountCheckoutCvvField() {
   mpCheckoutCvvField = null;
 }
 
+// Consulta as parcelas de verdade pro cartão selecionado (depende do banco
+// emissor e do valor da compra) — nada de "3x sem juros" fixo.
+async function loadCheckoutInstallments(card, amount) {
+  const select = document.getElementById('checkout-installments');
+  if (!select) return;
+  if (!mpClient || !card.first_six_digits) {
+    select.innerHTML = '<option value="1">1x (à vista)</option>';
+    return;
+  }
+  select.innerHTML = '<option>Calculando opções...</option>';
+  try {
+    const results = await mpClient.getInstallments({ amount, bin: card.first_six_digits, paymentTypeId: 'credit_card' });
+    const costs = results?.[0]?.payer_costs || [];
+    if (!costs.length) { select.innerHTML = '<option value="1">1x (à vista)</option>'; return; }
+    select.innerHTML = costs.map(c => `<option value="${c.installments}">${escapeHtml(c.recommended_message)}</option>`).join('');
+  } catch (e) {
+    console.error(e);
+    select.innerHTML = '<option value="1">1x (à vista)</option>';
+  }
+}
+
 function accountOrdersHtml() {
   if (!State.orders.length) {
     return `<div class="account-empty-hint" style="padding:40px 0;">
@@ -3093,9 +3114,7 @@ function cartaoPanelHtml() {
       </div>
       <div class="form-field"><label>Parcelas</label>
         <select id="checkout-installments">
-          <option value="1">1x sem juros</option>
-          <option value="2">2x sem juros</option>
-          <option value="3" selected>3x sem juros</option>
+          <option value="1">Calculando opções...</option>
         </select>
       </div>
     </div>
@@ -3262,6 +3281,8 @@ function renderCheckoutStep() {
           State.checkoutSelectedCardId = def.id;
         }
         mountCheckoutCvvField();
+        const selectedCard = State.paymentMethods.find(c => c.id === State.checkoutSelectedCardId);
+        if (selectedCard) loadCheckoutInstallments(selectedCard, cartSubtotal());
       }
     }
   }
