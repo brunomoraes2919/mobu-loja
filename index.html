@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://sdk.mercadopago.com/js/v2"></script>
 <style>
 /* ===================== TOKENS ===================== */
 :root{
@@ -795,18 +796,11 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 .saved-address-option b{font-size:13px;display:block;margin-bottom:4px;}
 .saved-address-option p{font-size:12px;color:var(--gray);margin:0;}
 
-.payment-pref-list{display:flex;flex-direction:column;gap:10px;}
-.payment-pref-option{
-  display:flex;align-items:center;gap:12px;text-align:left;background:#fff;border:1.5px solid var(--border-light);
-  border-radius:var(--radius);padding:14px;
+.mp-secure-field{
+  height:42px;border:1px solid var(--border-light);border-radius:var(--radius);padding:0 12px;
+  display:flex;align-items:center;background:#fff;
 }
-.payment-pref-option svg{width:20px;height:20px;flex-shrink:0;color:var(--gray);}
-.payment-pref-option div{flex:1;min-width:0;}
-.payment-pref-option b{font-size:13.5px;display:block;}
-.payment-pref-option span{font-size:11.5px;color:var(--gray);}
-.payment-pref-option.selected{border-color:var(--blue);background:var(--blue-light);}
-.payment-pref-option.selected svg:first-child{color:var(--blue);}
-.payment-pref-check{width:18px !important;height:18px !important;color:var(--blue) !important;flex-shrink:0;}
+.mp-secure-field iframe{width:100%;height:100%;}
 
 .orders-list{display:flex;flex-direction:column;gap:16px;}
 .order-card{background:var(--card-light);border-radius:var(--radius-md);padding:20px;}
@@ -1206,6 +1200,30 @@ const SUPABASE_ANON_KEY = 'sb_publishable_5zHpQxXSYgEY80AZMezAlg_kuzgPoxI'; // <
 const supabaseClient = (SUPABASE_ANON_KEY && window.supabase)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
+
+/* ===================== MERCADO PAGO (cartões salvos) =====================
+   O SDK do Mercado Pago tokeniza o cartão direto no navegador — o número e
+   o CVV vão pra eles, nunca passam pelo nosso código. A gente só recebe um
+   token seguro de volta, que manda pra função abaixo.
+   ========================================================================= */
+const MP_PUBLIC_KEY = 'TEST-7a26813a-cc3c-486f-92e3-a73a871135ce'; // troque pela de produção quando for ao ar de verdade
+const MANAGE_CARDS_ENDPOINT = 'https://lkrucvfruwkjbrfcdvpm.supabase.co/functions/v1/manage-cards';
+
+const mpClient = (MP_PUBLIC_KEY && window.MercadoPago) ? new MercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' }) : null;
+
+// Chama a função manage-cards já autenticado com a sessão atual do cliente.
+async function callManageCards(action, extra) {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) throw new Error('not_authenticated');
+  const res = await fetch(MANAGE_CARDS_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action, ...extra }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'unknown_error');
+  return data;
+}
 
 /* ===================== DADOS ===================== */
 
@@ -1749,6 +1767,10 @@ const State = {
   user: JSON.parse(localStorage.getItem('mobu_user') || 'null'),
   addresses: JSON.parse(localStorage.getItem('mobu_addresses') || '[]'),
   paymentPref: localStorage.getItem('mobu_payment_pref') || null, // 'pix' | 'cartao' | 'boleto'
+  paymentMethods: [],
+  paymentMethodsLoaded: false,
+  loadingCards: false,
+  showAddCardForm: false,
   orders: JSON.parse(localStorage.getItem('mobu_orders') || '[]'),
   accountTab: 'perfil',
   editingAddressId: null,
@@ -2571,7 +2593,11 @@ function renderAccountPanel() {
       });
     }
   }
-  else if (State.accountTab === 'pagamento') panel.innerHTML = accountPaymentHtml();
+  else if (State.accountTab === 'pagamento') {
+    panel.innerHTML = accountPaymentHtml();
+    if (State.showAddCardForm) mountCardForm();
+    if (!State.paymentMethodsLoaded && !State.loadingCards) loadPaymentMethods();
+  }
   else if (State.accountTab === 'pedidos') panel.innerHTML = accountOrdersHtml();
 }
 
@@ -2654,27 +2680,75 @@ function addressFormHtml(a) {
 }
 
 function accountPaymentHtml() {
-  const options = [
-    { id: 'pix', label: 'Pix', note: 'Aprovação na hora, 5% de desconto', icon: `<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>` },
-    { id: 'cartao', label: 'Cartão de crédito', note: 'Em até 3x sem juros', icon: `<rect x="3" y="6" width="18" height="13" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/>` },
-    { id: 'boleto', label: 'Boleto', note: 'Vence em 3 dias úteis', icon: `<rect x="4" y="4" width="16" height="16" rx="1"/><line x1="8" y1="4" x2="8" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="16" y1="4" x2="16" y2="20"/>` },
-  ];
+  if (State.loadingCards) {
+    return `<div class="account-card" style="max-width:480px;"><p class="account-empty-hint">Carregando cartões...</p></div>`;
+  }
+  const cards = State.paymentMethods || [];
   return `
-    <div class="account-card" style="max-width:440px;">
-      <h3 class="account-card-title">Forma de pagamento preferida</h3>
-      <p class="account-card-subtitle">Selecionamos ela automaticamente no seu próximo checkout.</p>
-      <div class="payment-pref-list">
-        ${options.map(o => `
-          <button class="payment-pref-option ${State.paymentPref === o.id ? 'selected' : ''}" data-action="set-payment-pref" data-pref="${o.id}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${o.icon}</svg>
-            <div><b>${o.label}</b><span>${o.note}</span></div>
-            ${State.paymentPref === o.id ? '<svg class="payment-pref-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>' : ''}
-          </button>
-        `).join('')}
-      </div>
-      <p class="account-card-note">Por segurança, não guardamos número de cartão — isso é feito direto com o meio de pagamento na hora da compra.</p>
+    <div class="account-card" style="max-width:480px;">
+      <h3 class="account-card-title">Cartões salvos</h3>
+      ${cards.length ? cards.map(cardItemHtml).join('') : '<p class="account-empty-hint">Nenhum cartão salvo ainda.</p>'}
+    </div>
+    <div style="max-width:480px;margin-top:14px;">
+      ${State.showAddCardForm ? addCardFormHtml() : `<button class="btn btn-outline" data-action="show-add-card">+ Adicionar cartão</button>`}
     </div>
   `;
+}
+function cardItemHtml(c) {
+  const brandLabel = (c.brand || '').replace(/^\w/, m => m.toUpperCase());
+  return `
+    <div class="address-card">
+      ${c.is_default ? '<span class="badge badge-blue address-default-badge">Padrão</span>' : ''}
+      <b>${escapeHtml(brandLabel)} •••• ${escapeHtml(c.last_four || '')}</b>
+      <p>Validade ${escapeHtml(String(c.exp_month || '').padStart(2, '0'))}/${escapeHtml(String(c.exp_year || ''))}</p>
+      <div class="address-card-actions">
+        ${!c.is_default ? `<button class="link-btn" data-action="set-default-card" data-id="${c.id}">Tornar padrão</button>` : ''}
+        <button class="link-btn link-btn-danger" data-action="delete-card" data-id="${c.id}">Remover</button>
+      </div>
+    </div>
+  `;
+}
+function addCardFormHtml() {
+  return `
+    <div class="account-card">
+      <h3 class="account-card-title">Adicionar cartão</h3>
+      <div class="form-field full"><label>Nome no cartão</label><input type="text" id="card-holder-name" placeholder="Como está escrito no cartão"></div>
+      <div class="form-field full"><label>Número do cartão</label><div id="mp-card-number" class="mp-secure-field"></div></div>
+      <div class="form-grid">
+        <div class="form-field"><label>Validade</label><div id="mp-expiration-date" class="mp-secure-field"></div></div>
+        <div class="form-field"><label>CVV</label><div id="mp-security-code" class="mp-secure-field"></div></div>
+      </div>
+      <div class="form-field full">
+        <label>CPF do titular</label>
+        <input type="text" id="card-cpf" placeholder="000.000.000-00" maxlength="14">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px;">
+        <button class="btn btn-outline" data-action="cancel-add-card">Cancelar</button>
+        <button class="btn btn-dark" style="flex:1;min-width:0;" data-action="submit-add-card">Salvar cartão</button>
+      </div>
+      <p class="account-card-note">🔒 Processado com segurança pelo Mercado Pago — o número do seu cartão nunca passa pelos nossos servidores.</p>
+    </div>
+  `;
+}
+async function loadPaymentMethods() {
+  State.loadingCards = true;
+  renderAccountPanel();
+  try {
+    const { cards } = await callManageCards('list');
+    State.paymentMethods = cards || [];
+  } catch (e) {
+    console.error(e);
+    toast('Não foi possível carregar seus cartões agora.', 'error');
+  }
+  State.loadingCards = false;
+  State.paymentMethodsLoaded = true;
+  renderAccountPanel();
+}
+function mountCardForm() {
+  if (!mpClient) return;
+  mpClient.fields.create('cardNumber', { placeholder: '0000 0000 0000 0000' }).mount('mp-card-number');
+  mpClient.fields.create('expirationDate', { placeholder: 'MM/AA' }).mount('mp-expiration-date');
+  mpClient.fields.create('securityCode', { placeholder: 'CVV' }).mount('mp-security-code');
 }
 
 function accountOrdersHtml() {
@@ -3360,12 +3434,57 @@ document.addEventListener('click', async (e) => {
       renderAccountPanel();
       break;
 
-    case 'set-payment-pref':
-      if (isSupabaseConfigured()) { await setPaymentPrefReal(t.dataset.pref); }
-      else { State.paymentPref = t.dataset.pref; savePaymentPref(); }
-      toast('Preferência de pagamento salva');
-      renderAccountPanel();
+    case 'show-add-card': State.showAddCardForm = true; renderAccountPanel(); break;
+    case 'cancel-add-card': State.showAddCardForm = false; renderAccountPanel(); break;
+    case 'submit-add-card': {
+      if (!mpClient) { toast('Pagamento com cartão ainda não está configurado.', 'error'); break; }
+      const cardholderName = qs('#card-holder-name').value.trim();
+      const cpf = qs('#card-cpf').value.trim();
+      if (!cardholderName) { toast('Digite o nome que está no cartão', 'error'); break; }
+      if (!isValidCpf(cpf)) { toast('CPF inválido — confira os números', 'error'); break; }
+      t.disabled = true; t.textContent = 'Salvando...';
+      try {
+        const tokenResult = await mpClient.fields.createCardToken({
+          cardholderName,
+          identificationType: 'CPF',
+          identificationNumber: cpf.replace(/\D/g, ''),
+        });
+        await callManageCards('save', { cardToken: tokenResult.id });
+        toast('Cartão salvo com sucesso!');
+        State.showAddCardForm = false;
+        State.paymentMethodsLoaded = false;
+        await loadPaymentMethods();
+      } catch (e) {
+        console.error(e);
+        toast('Não foi possível salvar o cartão. Confira os dados e tente de novo.', 'error');
+      } finally {
+        t.disabled = false; t.textContent = 'Salvar cartão';
+      }
       break;
+    }
+    case 'delete-card': {
+      try {
+        await callManageCards('delete', { cardId: t.dataset.id });
+        toast('Cartão removido');
+        State.paymentMethodsLoaded = false;
+        await loadPaymentMethods();
+      } catch (e) {
+        console.error(e);
+        toast('Não foi possível remover agora.', 'error');
+      }
+      break;
+    }
+    case 'set-default-card': {
+      try {
+        await callManageCards('set-default', { cardId: t.dataset.id });
+        State.paymentMethodsLoaded = false;
+        await loadPaymentMethods();
+      } catch (e) {
+        console.error(e);
+        toast('Não foi possível atualizar agora.', 'error');
+      }
+      break;
+    }
     case 'go-ai-studio': resetAiState(); navigate('ai-studio'); break;
 
     case 'open-drawer': renderDrawer(); openDrawer(); break;
