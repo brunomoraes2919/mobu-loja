@@ -1827,11 +1827,18 @@ function cleanAuthParamsFromUrl() {
 }
 
 async function loadAccountData(userId) {
-  const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
-  if (profile) {
-    State.user = { id: userId, name: profile.name, email: profile.email, phone: profile.phone, cpf: profile.cpf };
-    State.paymentPref = profile.payment_pref;
+  let { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
+  if (!profile) {
+    // Conta sem perfil (órfã — geralmente por ter sido apagada só da tabela
+    // profiles, sem apagar o usuário em Authentication → Users). Em vez de
+    // travar o login, recria um perfil básico agora.
+    const { data: userData } = await supabaseClient.auth.getUser();
+    const email = userData?.user?.email || '';
+    profile = { name: email.split('@')[0] || 'Cliente', email, phone: null, cpf: null, payment_pref: null };
+    await supabaseClient.from('profiles').insert({ id: userId, ...profile });
   }
+  State.user = { id: userId, name: profile.name, email: profile.email, phone: profile.phone, cpf: profile.cpf };
+  State.paymentPref = profile.payment_pref;
   const { data: addresses } = await supabaseClient.from('addresses').select('*').eq('user_id', userId).order('created_at');
   State.addresses = (addresses || []).map(a => ({
     id: a.id, label: a.label, cep: a.cep, street: a.street, number: a.number,
