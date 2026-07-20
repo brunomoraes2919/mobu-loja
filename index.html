@@ -805,6 +805,20 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 .card-number-wrap .mp-secure-field{padding-right:52px;}
 .card-brand-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);height:24px;width:auto;max-width:36px;pointer-events:none;}
 
+.saved-card-row{
+  display:flex;align-items:center;gap:14px;background:var(--card-light);border-radius:var(--radius-md);padding:16px 18px;margin-bottom:12px;
+}
+.card-brand-badge{
+  width:44px;height:30px;flex-shrink:0;border-radius:var(--radius);border:1px solid var(--border-light);background:#fff;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.card-brand-badge img{width:100%;height:100%;object-fit:contain;padding:3px;}
+.card-brand-fallback{display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:var(--gray-light);}
+.card-brand-fallback svg{width:18px;height:18px;}
+.saved-card-info{flex:1;min-width:0;}
+.saved-card-info b{font-size:13.5px;display:block;}
+.saved-card-info span{font-size:11.5px;color:var(--gray);}
+
 .orders-list{display:flex;flex-direction:column;gap:16px;}
 .order-card{background:var(--card-light);border-radius:var(--radius-md);padding:20px;}
 .order-card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:10px;}
@@ -2700,14 +2714,19 @@ function accountPaymentHtml() {
 function cardItemHtml(c) {
   const brandLabel = (c.brand || '').replace(/^\w/, m => m.toUpperCase());
   return `
-    <div class="address-card">
-      ${c.is_default ? '<span class="badge badge-blue address-default-badge">Padrão</span>' : ''}
-      <b>${escapeHtml(brandLabel)} •••• ${escapeHtml(c.last_four || '')}</b>
-      <p>Validade ${escapeHtml(String(c.exp_month || '').padStart(2, '0'))}/${escapeHtml(String(c.exp_year || ''))}</p>
-      <div class="address-card-actions">
-        ${!c.is_default ? `<button class="link-btn" data-action="set-default-card" data-id="${c.id}">Tornar padrão</button>` : ''}
-        <button class="link-btn link-btn-danger" data-action="delete-card" data-id="${c.id}">Remover</button>
+    <div class="saved-card-row">
+      <div class="card-brand-badge">
+        ${c.brand_logo_url
+          ? `<img src="${c.brand_logo_url}" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+             <span class="card-brand-fallback" style="display:none">${GENERIC_CARRIER_ICON}</span>`
+          : `<span class="card-brand-fallback">${GENERIC_CARRIER_ICON}</span>`}
       </div>
+      <div class="saved-card-info">
+        <b>${escapeHtml(brandLabel)} •••• ${escapeHtml(c.last_four || '')}</b>
+        <span>Validade ${escapeHtml(String(c.exp_month || '').padStart(2, '0'))}/${escapeHtml(String(c.exp_year || ''))}</span>
+      </div>
+      ${c.is_default ? '<span class="badge badge-blue">Padrão</span>' : `<button class="link-btn" data-action="set-default-card" data-id="${c.id}">Tornar padrão</button>`}
+      <button class="link-btn link-btn-danger" data-action="delete-card" data-id="${c.id}">Remover</button>
     </div>
   `;
 }
