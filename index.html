@@ -3286,14 +3286,19 @@ function qaItemHtml(q) {
 // única de encomenda — soma peso e valor, usa a maior dimensão de cada
 // eixo (aproximação razoável de "vai tudo numa caixa só").
 function aggregateCartPackage() {
-  const withPkg = State.cart.filter(i => i.pkg);
-  if (!withPkg.length) return null;
+  if (!State.cart.length) return null;
+  // O item do carrinho não guarda peso/dimensão diretamente — busca no
+  // catálogo pelo id; se não encontrar (ex: miniatura gerada por IA sem
+  // pacote específico), usa uma estimativa padrão de item pequeno, pra
+  // nunca deixar o cliente sem nenhuma ideia de frete.
+  const DEFAULT_PKG = { weight: 0.3, width: 11, height: 11, length: 16 };
+  const pkgs = State.cart.map(i => ({ item: i, pkg: (i.pkg || findProduct(i.id)?.pkg || DEFAULT_PKG) }));
   return {
-    weight: withPkg.reduce((s, i) => s + (i.pkg.weight || 0.3) * i.qty, 0),
-    width: Math.max(...withPkg.map(i => i.pkg.width || 11)),
-    height: Math.max(...withPkg.map(i => i.pkg.height || 11)),
-    length: Math.max(...withPkg.map(i => i.pkg.length || 16)),
-    quantity: withPkg.reduce((s, i) => s + i.qty, 0),
+    weight: pkgs.reduce((s, x) => s + (x.pkg.weight || 0.3) * x.item.qty, 0),
+    width: Math.max(...pkgs.map(x => x.pkg.width || 11)),
+    height: Math.max(...pkgs.map(x => x.pkg.height || 11)),
+    length: Math.max(...pkgs.map(x => x.pkg.length || 16)),
+    quantity: pkgs.reduce((s, x) => s + x.item.qty, 0),
     value: cartSubtotal(),
   };
 }
