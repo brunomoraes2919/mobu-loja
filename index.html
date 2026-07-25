@@ -168,6 +168,21 @@ header.site-header{
 .hamburger{display:none;border:0;background:none;width:40px;height:40px;align-items:center;justify-content:center;}
 .hamburger svg{width:24px;height:24px;}
 
+.nav-cats-mobile{display:none;}
+@media (max-width:860px){
+  .nav-cats-mobile{
+    display:flex;gap:8px;overflow-x:auto;padding:10px 16px;border-top:1px solid var(--border-light);
+    -webkit-overflow-scrolling:touch;
+  }
+  .nav-cats-mobile::-webkit-scrollbar{display:none;}
+  .navcat-m{
+    flex-shrink:0;background:var(--card-light);border:0;border-radius:var(--radius-full);padding:8px 14px;
+    font-size:12.5px;font-weight:600;color:var(--gray);white-space:nowrap;
+  }
+  .navcat-m.active{background:var(--black);color:#fff;}
+  .navcat-m-ai{background:var(--blue);color:#fff;}
+}
+
 @media (max-width:860px){
   .nav-search{display:none;}
   .nav-cats{display:none;}
@@ -366,9 +381,27 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 .wa-float{
   position:fixed;bottom:22px;right:22px;width:56px;height:56px;border-radius:50%;background:#25D366;
   display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,.25);z-index:70;
-  border:0;
+  border:0;transition:bottom .2s;
 }
 .wa-float svg{width:28px;height:28px;fill:#fff;}
+
+.pdp-sticky-bar{
+  position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--border-light);
+  display:none;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;
+  box-shadow:0 -4px 16px rgba(0,0,0,.08);z-index:65;transform:translateY(100%);transition:transform .25s;
+}
+.pdp-sticky-bar.show{transform:translateY(0);}
+.pdp-sticky-info{display:flex;flex-direction:column;min-width:0;}
+.pdp-sticky-info b{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw;}
+.pdp-sticky-info span{font-size:15px;font-weight:700;color:var(--blue);}
+.pdp-sticky-bar .btn{flex-shrink:0;}
+@media (min-width:860px){
+  .pdp-sticky-bar{display:none !important;}
+}
+@media (max-width:859px){
+  .pdp-sticky-bar{display:flex;}
+  body:has(.pdp-sticky-bar.show) .wa-float{bottom:88px;}
+}
 
 /* toast */
 #toast{
@@ -503,6 +536,18 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 .spec-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border-light);font-size:13px;}
 .spec-row span:first-child{color:var(--gray);}
 .review-item{padding:16px 0;border-bottom:1px solid var(--border-light);}
+.review-photos{display:flex;gap:8px;margin-top:10px;}
+.review-photos img{width:64px;height:64px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border-light);}
+.star-picker{display:flex;gap:6px;margin-bottom:14px;}
+.star-pick{background:none;border:0;font-size:28px;color:var(--border-light);line-height:1;padding:0;}
+.star-pick.filled{color:#f5a623;}
+.qa-item{padding:14px 0;border-bottom:1px solid var(--border-light);}
+.qa-question{font-size:13.5px;margin:0 0 6px;}
+.qa-date{font-size:11px;color:var(--gray-light);margin-left:6px;}
+.qa-answer{font-size:13px;color:#333;background:var(--card-light);padding:10px 12px;border-radius:var(--radius);margin:0;}
+.qa-pending{color:var(--gray-light);font-style:italic;background:none;padding:0;}
+.qa-answer-form{display:flex;gap:8px;align-items:flex-start;}
+.qa-answer-form textarea{flex:1;min-width:0;border:1px solid var(--border-light);border-radius:var(--radius);padding:8px 10px;font-size:13px;font-family:inherit;}
 .review-head{display:flex;justify-content:space-between;margin-bottom:6px;}
 .review-name{font-weight:700;font-size:13px;}
 .review-date{font-size:11.5px;color:var(--gray-light);}
@@ -521,6 +566,12 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 .summary-row{display:flex;justify-content:space-between;font-size:13.5px;padding:8px 0;}
 .summary-row.total{border-top:1px solid var(--border-light);margin-top:8px;padding-top:14px;font-size:16px;font-weight:700;}
 .summary-row.total b{font-family:var(--font-mono);}
+.cart-ship-box{background:var(--card-light);border-radius:var(--radius);padding:12px;margin:14px 0;}
+.cart-ship-box .cep-row{margin-top:6px;}
+.ship-loading-note{margin-top:8px;font-size:12px;}
+.ship-loading-note.show{display:block;}
+.ship-loading-note:not(.show){display:none;}
+.cart-ship-found{color:var(--green);font-weight:600;}
 .coupon-row{display:flex;gap:8px;margin:16px 0;}
 .coupon-row input{flex:1;border:1px solid var(--border-light);border-radius:var(--radius);padding:10px 12px;font-size:12.5px;}
 
@@ -548,6 +599,7 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
 }
 .form-field input:focus,.form-field select:focus{outline:none;border-color:var(--blue);}
 
+.payment-security-note{font-size:11.5px;color:var(--green);font-weight:600;}
 .pay-tabs{display:flex;gap:10px;margin-bottom:20px;}
 .pay-tab{
   flex:1;border:1.5px solid var(--border-light);border-radius:var(--radius);padding:14px 10px;text-align:center;
@@ -920,6 +972,7 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
   </div>
   <div class="nav-bottom">
     <nav class="nav-cats" id="nav-cats"></nav>
+    <nav class="nav-cats-mobile" id="nav-cats-mobile"></nav>
   </div>
 </header>
 
@@ -1825,6 +1878,7 @@ const State = {
   checkoutSelectedCardId: null,
   checkoutBuyerInfo: null,
   checkoutManualAddress: null,
+  cartShippingEstimate: null,
   orders: JSON.parse(localStorage.getItem('mobu_orders') || '[]'),
   accountTab: 'perfil',
   editingAddressId: null,
@@ -1942,7 +1996,7 @@ async function loadAccountData(userId) {
     };
     await supabaseClient.from('profiles').insert({ id: userId, ...profile });
   }
-  State.user = { id: userId, name: profile.name, email: profile.email, phone: profile.phone, cpf: profile.cpf };
+  State.user = { id: userId, name: profile.name, email: profile.email, phone: profile.phone, cpf: profile.cpf, isAdmin: !!profile.is_admin };
   State.paymentPref = profile.payment_pref;
   const { data: addresses } = await supabaseClient.from('addresses').select('*').eq('user_id', userId).order('created_at');
   State.addresses = (addresses || []).map(a => ({
@@ -2202,6 +2256,13 @@ function renderNavCats() {
     </button>` +
     `<button class="navcat active" data-action="go-catalog" data-cat="all">Todos os produtos</button>` +
     CATEGORIES.map(c => `<button class="navcat" data-action="go-catalog" data-cat="${c.id}">${c.name}</button>`).join('');
+  const navMobile = document.getElementById('nav-cats-mobile');
+  if (navMobile) {
+    navMobile.innerHTML =
+      `<button class="navcat-m active" data-action="go-catalog" data-cat="all">Todos</button>` +
+      CATEGORIES.map(c => `<button class="navcat-m" data-action="go-catalog" data-cat="${c.id}">${c.name}</button>`).join('') +
+      `<button class="navcat-m navcat-m-ai" data-action="go-ai-studio">✨ Criar miniatura</button>`;
+  }
   const ftr = document.getElementById('ftr-cats');
   ftr.innerHTML = CATEGORIES.map(c => `<li><a href="#" data-action="go-catalog" data-cat="${c.id}">${c.name}</a></li>`).join('');
 }
@@ -2854,6 +2915,8 @@ function unmountCardForm() {
 // o Mercado Pago exige recapturar o código de segurança por segurança,
 // mesmo pra cartão salvo, mas não precisa pedir número/validade de novo.
 let mpCheckoutCvvField = null;
+let pdpStickyScrollHandler = null;
+let selectedReviewRating = 0;
 let pixPollInterval = null;
 function stopPixPolling() {
   if (pixPollInterval) { clearInterval(pixPollInterval); pixPollInterval = null; }
@@ -3040,6 +3103,7 @@ function renderProduct() {
               <button class="tab-head active" data-action="pdp-tab" data-tab="desc">Descrição</button>
               <button class="tab-head" data-action="pdp-tab" data-tab="specs">Especificações</button>
               <button class="tab-head" data-action="pdp-tab" data-tab="reviews">Avaliações (${p.reviews})</button>
+              <button class="tab-head" data-action="pdp-tab" data-tab="qa">Perguntas</button>
             </div>
             <div class="tab-panel active" data-panel="desc">
               <p>${p.desc}</p>
@@ -3049,12 +3113,28 @@ function renderProduct() {
               ${Object.entries(p.specs).map(([k, v]) => `<div class="spec-row"><span>${k}</span><span>${v}</span></div>`).join('')}
             </div>
             <div class="tab-panel" data-panel="reviews">
-              ${REVIEWS_POOL.slice(0, 3).map(r => `
-                <div class="review-item">
-                  <div class="review-head"><span class="review-name">${r.name}</span><span class="review-date">compra verificada</span></div>
-                  <div class="stars" style="margin-bottom:6px;">★★★★★</div>
-                  <p style="font-size:13.5px;color:#333;">${r.text}</p>
-                </div>`).join('')}
+              <div id="reviews-list">
+                ${REVIEWS_POOL.slice(0, 3).map(r => `
+                  <div class="review-item">
+                    <div class="review-head"><span class="review-name">${r.name}</span><span class="review-date">compra verificada</span></div>
+                    <div class="stars" style="margin-bottom:6px;">★★★★★</div>
+                    <p style="font-size:13.5px;color:#333;">${r.text}</p>
+                  </div>`).join('')}
+              </div>
+              <div id="review-form-area">
+                ${isLoggedIn()
+                  ? `<button class="btn btn-outline" data-action="show-review-form">Escrever avaliação</button>`
+                  : `<p class="checkout-hint"><a href="#" data-action="go-account">Entre na sua conta</a> pra deixar uma avaliação.</p>`}
+              </div>
+            </div>
+            <div class="tab-panel" data-panel="qa">
+              <div id="qa-list"><p class="account-empty-hint">Carregando perguntas...</p></div>
+              <div id="qa-form-area">
+                ${isLoggedIn()
+                  ? `<div class="form-field full" style="margin-top:14px;"><label>Fazer uma pergunta</label><textarea id="qa-question-input" rows="2" placeholder="Ex: esse vaso aguenta água de verdade?"></textarea></div>
+                     <button class="btn btn-outline" data-action="submit-question" data-id="${p.id}">Enviar pergunta</button>`
+                  : `<p class="checkout-hint"><a href="#" data-action="go-account">Entre na sua conta</a> pra fazer uma pergunta.</p>`}
+              </div>
             </div>
           </div>
         </div>
@@ -3067,6 +3147,15 @@ function renderProduct() {
       </div>` : ''}
     </div>
     <div style="height:40px"></div>
+    <div class="pdp-sticky-bar" id="pdp-sticky-bar">
+      <div class="pdp-sticky-info">
+        <b>${p.name}</b>
+        <span class="mono">${p.price == null ? 'Sob consulta' : fmtPrice(p.price)}</span>
+      </div>
+      <button class="btn btn-dark" data-action="pdp-add" data-id="${p.id}">
+        ${p.price == null ? 'Solicitar' : 'Adicionar'}
+      </button>
+    </div>
   `;
 
   if (p.hasText) {
@@ -3095,11 +3184,148 @@ function renderProduct() {
     if (cepInput) cepInput.value = def.cep.replace(/(\d{5})(\d{3})/, '$1-$2');
     runProductCepCalc(def.cep.replace(/\D/g, ''), cepFoundNoteHtml({ neighborhood: def.neighborhood, city: def.city, uf: def.uf }));
   }
+
+  // Barra fixa de compra no celular: só aparece depois que o botão
+  // principal já saiu da tela (rolou pra cima), pra não duplicar visão.
+  if (pdpStickyScrollHandler) window.removeEventListener('scroll', pdpStickyScrollHandler);
+  const stickyBar = document.getElementById('pdp-sticky-bar');
+  const mainAddBtn = document.querySelector('.pdp-actions [data-action="pdp-add"]');
+  if (stickyBar && mainAddBtn) {
+    pdpStickyScrollHandler = () => {
+      const rect = mainAddBtn.getBoundingClientRect();
+      stickyBar.classList.toggle('show', rect.bottom < 0);
+    };
+    window.addEventListener('scroll', pdpStickyScrollHandler, { passive: true });
+    pdpStickyScrollHandler();
+  } else {
+    pdpStickyScrollHandler = null;
+  }
+
+  if (isSupabaseConfigured()) {
+    loadProductReviews(p.id);
+    loadProductQuestions(p.id);
+  } else {
+    const qaList = document.getElementById('qa-list');
+    if (qaList) qaList.innerHTML = '<p class="account-empty-hint">Nenhuma pergunta ainda. Seja o primeiro a perguntar!</p>';
+  }
+}
+
+async function loadProductReviews(productId) {
+  const list = document.getElementById('reviews-list');
+  if (!list) return;
+  try {
+    const { data, error } = await supabaseClient.from('reviews').select('*').eq('product_id', productId).order('created_at', { ascending: false });
+    if (error) throw error;
+    if (data && data.length) {
+      list.innerHTML = data.map(reviewItemHtml).join('');
+    }
+    // se não houver avaliação real ainda, mantém as de exemplo já renderizadas
+  } catch (e) {
+    console.error(e);
+  }
+}
+function reviewItemHtml(r) {
+  const date = new Date(r.created_at).toLocaleDateString('pt-BR');
+  return `
+    <div class="review-item">
+      <div class="review-head"><span class="review-name">${escapeHtml(r.user_name)}</span><span class="review-date">${r.verified_purchase ? 'compra verificada · ' : ''}${date}</span></div>
+      <div class="stars" style="margin-bottom:6px;">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
+      ${r.comment ? `<p style="font-size:13.5px;color:#333;">${escapeHtml(r.comment)}</p>` : ''}
+      ${(r.photos && r.photos.length) ? `<div class="review-photos">${r.photos.map(url => `<img src="${url}" alt="Foto do cliente">`).join('')}</div>` : ''}
+    </div>
+  `;
+}
+function showReviewForm() {
+  const area = document.getElementById('review-form-area');
+  if (!area) return;
+  area.innerHTML = `
+    <div class="account-card" style="margin-top:14px;">
+      <h3 class="account-card-title">Sua avaliação</h3>
+      <div class="star-picker" id="review-star-picker">
+        ${[1,2,3,4,5].map(n => `<button type="button" class="star-pick" data-value="${n}" data-action="pick-star">★</button>`).join('')}
+      </div>
+      <div class="form-field full"><label>Comentário (opcional)</label><textarea id="review-comment-input" rows="3" placeholder="Conte como foi sua experiência com o produto"></textarea></div>
+      <div class="form-field full"><label>Fotos (opcional, até 3)</label><input type="file" id="review-photo-input" accept="image/*" multiple></div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button class="btn btn-outline" data-action="cancel-review-form">Cancelar</button>
+        <button class="btn btn-dark" style="flex:1;min-width:0;" data-action="submit-review" data-id="${State.params.id}">Enviar avaliação</button>
+      </div>
+    </div>
+  `;
+}
+async function loadProductQuestions(productId) {
+  const list = document.getElementById('qa-list');
+  if (!list) return;
+  try {
+    const { data, error } = await supabaseClient.from('product_questions').select('*').eq('product_id', productId).order('created_at', { ascending: false });
+    if (error) throw error;
+    if (!data || !data.length) { list.innerHTML = '<p class="account-empty-hint">Nenhuma pergunta ainda. Seja o primeiro a perguntar!</p>'; return; }
+    list.innerHTML = data.map(qaItemHtml).join('');
+  } catch (e) {
+    console.error(e);
+    list.innerHTML = '<p class="account-empty-hint">Não foi possível carregar as perguntas agora.</p>';
+  }
+}
+function qaItemHtml(q) {
+  const date = new Date(q.created_at).toLocaleDateString('pt-BR');
+  const canAnswer = State.user && State.user.isAdmin && !q.answer;
+  return `
+    <div class="qa-item">
+      <p class="qa-question"><b>P:</b> ${escapeHtml(q.question)} <span class="qa-date">${date}</span></p>
+      ${q.answer ? `<p class="qa-answer"><b>R (MOBU):</b> ${escapeHtml(q.answer)}</p>` : (canAnswer ? `
+        <div class="qa-answer-form">
+          <textarea id="qa-answer-${q.id}" rows="2" placeholder="Escreva a resposta..."></textarea>
+          <button class="btn btn-dark btn-sm" data-action="submit-answer" data-id="${q.id}">Responder</button>
+        </div>` : `<p class="qa-answer qa-pending">Aguardando resposta da MOBU</p>`)}
+    </div>
+  `;
 }
 
 /* ===================== CARRINHO (página) ===================== */
+// Combina as dimensões/peso de todos os itens do carrinho numa estimativa
+// única de encomenda — soma peso e valor, usa a maior dimensão de cada
+// eixo (aproximação razoável de "vai tudo numa caixa só").
+function aggregateCartPackage() {
+  const withPkg = State.cart.filter(i => i.pkg);
+  if (!withPkg.length) return null;
+  return {
+    weight: withPkg.reduce((s, i) => s + (i.pkg.weight || 0.3) * i.qty, 0),
+    width: Math.max(...withPkg.map(i => i.pkg.width || 11)),
+    height: Math.max(...withPkg.map(i => i.pkg.height || 11)),
+    length: Math.max(...withPkg.map(i => i.pkg.length || 16)),
+    quantity: withPkg.reduce((s, i) => s + i.qty, 0),
+    value: cartSubtotal(),
+  };
+}
+async function runCartShippingEstimate(cepRaw) {
+  const res = document.getElementById('cart-ship-result');
+  if (!res) return;
+  if (cepRaw.length !== 8) { res.innerHTML = '<span style="color:var(--red)">CEP inválido — confira os números.</span>'; res.classList.add('show'); return; }
+  const pkg = aggregateCartPackage();
+  if (!pkg) { res.innerHTML = '<span style="color:var(--gray)">Frete sob consulta pra esses itens.</span>'; res.classList.add('show'); return; }
+  res.innerHTML = '<div class="ship-loading">Calculando...</div>';
+  res.classList.add('show');
+  try {
+    const result = await fetchShippingOptions(cepRaw, pkg);
+    const cheapest = result.options?.[0];
+    if (!cheapest) { res.innerHTML = '<span style="color:var(--gray)">Não encontramos frete pra esse CEP.</span>'; return; }
+    State.cartShippingEstimate = cheapest.price;
+    res.innerHTML = `<div class="cart-ship-found">📦 A partir de <b>${cartSubtotal() >= 199 ? 'Grátis' : fmtPrice(cheapest.price)}</b> — ${cheapest.name} (${cheapest.deliveryTime} dias úteis)</div>`;
+    updateCartTotalDisplay();
+  } catch (e) {
+    console.error(e);
+    res.innerHTML = '<span style="color:var(--red)">Não foi possível calcular agora.</span>';
+  }
+}
+function updateCartTotalDisplay() {
+  const shipCost = cartSubtotal() >= 199 ? 0 : (State.cartShippingEstimate || 0);
+  const totalEl = document.getElementById('cart-total-value');
+  if (totalEl) totalEl.textContent = fmtPrice(cartSubtotal() + shipCost);
+}
+
 function renderCart() {
   const el = document.getElementById('view-cart');
+  const hasDefaultAddress = isLoggedIn() && State.addresses.some(a => a.isDefault);
   el.innerHTML = `
     <div class="page-title-band"><div class="container"><h1>Seu carrinho</h1><p>${State.cart.length} item(ns)</p></div></div>
     <div class="container">
@@ -3109,10 +3335,15 @@ function renderCart() {
         <div class="summary-card">
           <h3 style="font-size:16px;margin-bottom:14px;">Resumo do pedido</h3>
           <div class="summary-row"><span>Subtotal</span><span class="mono">${fmtPrice(cartSubtotal())}</span></div>
-          <div class="summary-row"><span>Frete</span><span>${cartSubtotal() >= 199 ? 'Grátis' : 'Calculado no checkout'}</span></div>
+          <div class="summary-row"><span>Frete</span><span>${cartSubtotal() >= 199 ? 'Grátis' : (State.cartShippingEstimate ? fmtPrice(State.cartShippingEstimate) : 'Calcule abaixo')}</span></div>
+          <div class="cart-ship-box">
+            <label style="font-size:11.5px;font-weight:700;">Calcular frete</label>
+            <div class="cep-row"><input type="text" id="cart-cep-input" placeholder="Digite seu CEP" maxlength="9"><button class="btn btn-outline btn-sm" data-action="calc-cart-cep">Calcular</button></div>
+            <div class="ship-loading-note" id="cart-ship-result"></div>
+          </div>
           <div class="coupon-row"><input type="text" id="coupon-input" placeholder="Cupom de desconto"><button class="btn btn-outline btn-sm" data-action="apply-coupon">Aplicar</button></div>
           <div id="coupon-msg" style="font-size:12px;color:var(--green);margin-bottom:6px;"></div>
-          <div class="summary-row total"><span>Total</span><b class="mono">${fmtPrice(cartSubtotal())}</b></div>
+          <div class="summary-row total"><span>Total</span><b class="mono" id="cart-total-value">${fmtPrice(cartSubtotal())}</b></div>
           <button class="btn btn-primary btn-block" style="margin-top:14px;" data-action="go-checkout">Ir para o pagamento</button>
           <button class="btn btn-outline btn-block" style="margin-top:8px;" data-action="go-catalog" data-cat="all">Continuar comprando</button>
         </div>
@@ -3125,7 +3356,19 @@ function renderCart() {
     </div>
     <div style="height:60px"></div>
   `;
+  if (State.cart.length) {
+    attachCepLookup('cart-cep-input', (data, clean) => { runCartShippingEstimate(clean); }, (msg) => {
+      const res = document.getElementById('cart-ship-result');
+      if (res) { res.innerHTML = `<span style="color:var(--red)">${escapeHtml(msg)}</span>`; res.classList.add('show'); }
+    });
+    if (hasDefaultAddress) {
+      const def = State.addresses.find(a => a.isDefault);
+      qs('#cart-cep-input').value = def.cep.replace(/(\d{5})(\d{3})/, '$1-$2');
+      runCartShippingEstimate(def.cep.replace(/\D/g, ''));
+    }
+  }
 }
+
 
 /* ===================== CHECKOUT ===================== */
 function cartaoPanelHtml() {
@@ -3282,8 +3525,9 @@ function renderCheckoutStep() {
     });
   } else {
     content.innerHTML = `
-      <h3 style="font-size:18px;margin-bottom:18px;">Como você quer pagar?</h3>
-      <div class="pay-tabs">
+      <h3 style="font-size:18px;margin-bottom:6px;">Como você quer pagar?</h3>
+      <p class="payment-security-note">🔒 Pagamento processado com segurança pelo Mercado Pago</p>
+      <div class="pay-tabs" style="margin-top:14px;">
         <button class="pay-tab ${State.activePayTab==='pix'?'active':''}" data-action="pay-tab" data-tab="pix">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Pix
         </button>
@@ -3768,6 +4012,93 @@ document.addEventListener('click', async (e) => {
       qsa('.tab-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === t.dataset.tab));
       break;
 
+    case 'show-review-form': showReviewForm(); break;
+    case 'cancel-review-form': {
+      const area = document.getElementById('review-form-area');
+      if (area) area.innerHTML = `<button class="btn btn-outline" data-action="show-review-form">Escrever avaliação</button>`;
+      selectedReviewRating = 0;
+      break;
+    }
+    case 'pick-star': {
+      selectedReviewRating = parseInt(t.dataset.value, 10);
+      qsa('.star-pick').forEach(b => b.classList.toggle('filled', parseInt(b.dataset.value, 10) <= selectedReviewRating));
+      break;
+    }
+    case 'submit-review': {
+      if (!selectedReviewRating) { toast('Escolha de 1 a 5 estrelas', 'error'); break; }
+      const comment = qs('#review-comment-input').value.trim();
+      const photoInput = qs('#review-photo-input');
+      const files = photoInput.files ? Array.from(photoInput.files).slice(0, 3) : [];
+      const productId = t.dataset.id;
+      t.disabled = true; t.textContent = 'Enviando...';
+      try {
+        const photoUrls = [];
+        for (const file of files) {
+          const path = `${productId}/${State.user.id}-${Date.now()}-${photoUrls.length}.${(file.name.split('.').pop() || 'jpg')}`;
+          const { error: upErr } = await supabaseClient.storage.from('review-photos').upload(path, file);
+          if (!upErr) {
+            const { data: pub } = supabaseClient.storage.from('review-photos').getPublicUrl(path);
+            if (pub?.publicUrl) photoUrls.push(pub.publicUrl);
+          }
+        }
+        const { data: pastOrders } = await supabaseClient.from('orders').select('items').eq('user_id', State.user.id);
+        const verified = !!(pastOrders || []).some(o => (o.items || []).some(it => it.id === productId || it.name === findProduct(productId)?.name));
+        const { error: insErr } = await supabaseClient.from('reviews').insert({
+          product_id: productId, user_id: State.user.id, user_name: State.user.name,
+          rating: selectedReviewRating, comment, photos: photoUrls, verified_purchase: verified,
+        });
+        if (insErr) throw insErr;
+        toast('Avaliação enviada — obrigado!');
+        selectedReviewRating = 0;
+        const area = document.getElementById('review-form-area');
+        if (area) area.innerHTML = `<button class="btn btn-outline" data-action="show-review-form">Escrever avaliação</button>`;
+        loadProductReviews(productId);
+      } catch (e) {
+        console.error(e);
+        toast('Não foi possível enviar sua avaliação agora.', 'error');
+        t.disabled = false; t.textContent = 'Enviar avaliação';
+      }
+      break;
+    }
+    case 'submit-question': {
+      const input = qs('#qa-question-input');
+      const question = input.value.trim();
+      if (!question) { toast('Digite sua pergunta', 'error'); break; }
+      const productId = t.dataset.id;
+      t.disabled = true; t.textContent = 'Enviando...';
+      try {
+        const { error } = await supabaseClient.from('product_questions').insert({
+          product_id: productId, user_id: State.user.id, user_name: State.user.name, question,
+        });
+        if (error) throw error;
+        toast('Pergunta enviada!');
+        input.value = '';
+        loadProductQuestions(productId);
+      } catch (e) {
+        console.error(e);
+        toast('Não foi possível enviar agora.', 'error');
+      } finally {
+        t.disabled = false; t.textContent = 'Enviar pergunta';
+      }
+      break;
+    }
+    case 'submit-answer': {
+      const questionId = t.dataset.id;
+      const answer = qs(`#qa-answer-${questionId}`).value.trim();
+      if (!answer) { toast('Digite a resposta', 'error'); break; }
+      t.disabled = true;
+      try {
+        const { error } = await supabaseClient.from('product_questions').update({ answer, answered_at: new Date().toISOString() }).eq('id', questionId);
+        if (error) throw error;
+        loadProductQuestions(State.params.id);
+      } catch (e) {
+        console.error(e);
+        toast('Não foi possível responder agora.', 'error');
+        t.disabled = false;
+      }
+      break;
+    }
+
     case 'calc-cep': {
       const cepRaw = document.getElementById('cep-input').value.replace(/\D/g, '');
       await runProductCepCalc(cepRaw);
@@ -3778,6 +4109,11 @@ document.addEventListener('click', async (e) => {
     case 'cart-dec': { const it = State.cart.find(i => i.key === t.dataset.key); setQty(t.dataset.key, it.qty - 1); break; }
     case 'cart-remove': removeFromCart(t.dataset.key); break;
 
+    case 'calc-cart-cep': {
+      const cepRaw = qs('#cart-cep-input').value.replace(/\D/g, '');
+      runCartShippingEstimate(cepRaw);
+      break;
+    }
     case 'apply-coupon': {
       const val = document.getElementById('coupon-input').value.trim().toUpperCase();
       const msg = document.getElementById('coupon-msg');
