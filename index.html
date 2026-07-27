@@ -3373,6 +3373,7 @@ async function loadCheckoutShippingOptions(cepRaw) {
       State.checkoutSelectedShipping = { name: first.name, company: first.company, price: first.price, deliveryTime: first.deliveryTime };
     }
     res.innerHTML = selectableShippingHtml(result, cartSubtotal() >= 199, State.checkoutSelectedShippingKey, 'checkout');
+    updateCheckoutSummary();
   } catch (e) {
     console.error(e);
     res.innerHTML = '<p class="account-empty-hint" style="color:var(--red)">Não foi possível calcular o frete agora.</p>';
@@ -3501,16 +3502,31 @@ function renderCheckout() {
       </div>
       <div class="cart-page-grid">
         <div id="checkout-step-content"></div>
-        <div class="summary-card">
+        <div class="summary-card" id="checkout-summary-card">
           <h3 style="font-size:16px;margin-bottom:14px;">Resumo</h3>
           ${State.cart.map(i => `<div class="summary-row"><span>${i.qty}× ${escapeHtml(i.name)}</span><span class="mono">${fmtPrice(i.price*i.qty)}</span></div>`).join('')}
-          <div class="summary-row"><span>Frete</span><span>${cartSubtotal() >= 199 ? 'Grátis' : fmtPrice(19.90)}</span></div>
-          <div class="summary-row total"><span>Total</span><b class="mono" id="checkout-total">${fmtPrice(cartSubtotal() + (cartSubtotal() >= 199 ? 0 : 19.90))}</b></div>
+          <div class="summary-row" id="checkout-shipping-row"><span>Frete</span><span id="checkout-shipping-value">${checkoutShippingRowText()}</span></div>
+          <div class="summary-row total"><span>Total</span><b class="mono" id="checkout-total">${fmtPrice(checkoutGrandTotal())}</b></div>
         </div>
       </div>
     </div>
   `;
   renderCheckoutStep();
+}
+function checkoutShippingRowText() {
+  if (cartSubtotal() >= 199) return 'Grátis';
+  if (State.checkoutSelectedShipping) return fmtPrice(State.checkoutSelectedShipping.price);
+  return 'Escolha na etapa de entrega';
+}
+function checkoutGrandTotal() {
+  const shipping = cartSubtotal() >= 199 ? 0 : (State.checkoutSelectedShipping?.price || 0);
+  return cartSubtotal() + shipping;
+}
+function updateCheckoutSummary() {
+  const valEl = document.getElementById('checkout-shipping-value');
+  const totalEl = document.getElementById('checkout-total');
+  if (valEl) valEl.textContent = checkoutShippingRowText();
+  if (totalEl) totalEl.textContent = fmtPrice(checkoutGrandTotal());
 }
 
 function renderCheckoutStep() {
@@ -4194,6 +4210,7 @@ document.addEventListener('click', async (e) => {
         State.checkoutSelectedShipping = option;
         const res = document.getElementById('checkout-shipping-result');
         if (res && State.checkoutShippingOptions) res.innerHTML = selectableShippingHtml(State.checkoutShippingOptions, cartSubtotal() >= 199, key, 'checkout');
+        updateCheckoutSummary();
       }
       break;
     }
@@ -4240,8 +4257,15 @@ document.addEventListener('click', async (e) => {
       State.checkoutSelectedShippingKey = null;
       State.checkoutSelectedShipping = null;
       renderCheckoutStep();
+      updateCheckoutSummary();
       break;
-    case 'checkout-manual-address': State.checkoutUseAddressId = 'manual'; renderCheckoutStep(); break;
+    case 'checkout-manual-address':
+      State.checkoutUseAddressId = 'manual';
+      State.checkoutSelectedShippingKey = null;
+      State.checkoutSelectedShipping = null;
+      renderCheckoutStep();
+      updateCheckoutSummary();
+      break;
     case 'checkout-use-saved-address': State.checkoutUseAddressId = null; renderCheckoutStep(); break;
     case 'checkout-finish': {
       const orderNumber = 'MOBU-' + Math.floor(10000 + Math.random() * 89999);
