@@ -2325,6 +2325,11 @@ function navigate(view, params) {
   qsa('#nav-cats .navcat').forEach(b => {
     b.classList.toggle('active', view === 'catalog' && b.dataset.cat === (State.params.cat || 'all'));
   });
+  // A barra de categorias do celular só faz sentido em telas de navegação
+  // do catálogo — em login/conta/checkout ela só polui a tela.
+  const NAV_HIDDEN_VIEWS = ['login', 'account', 'checkout', 'success', 'auth-status'];
+  const navMobile = document.getElementById('nav-cats-mobile');
+  if (navMobile) navMobile.style.display = NAV_HIDDEN_VIEWS.includes(view) ? 'none' : '';
 }
 
 /* ===================== CARRINHO ===================== */
