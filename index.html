@@ -784,6 +784,12 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
   display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border-light);
 }
 .ship-option:last-child{border-bottom:0;}
+.ship-option-selectable{
+  width:100%;background:#fff;border:1.5px solid var(--border-light);border-radius:var(--radius);
+  padding:12px 14px;margin-bottom:8px;text-align:left;cursor:pointer;
+}
+.ship-option-selectable.selected{border-color:var(--blue);background:var(--blue-light);}
+.ship-option-check{width:18px;height:18px;color:var(--blue);flex-shrink:0;}
 .ship-option-info{flex:1;min-width:0;}
 .ship-option b{font-size:13.5px;}
 .ship-logo{
@@ -1588,6 +1594,28 @@ function shippingResultHtml(result, freeShippingEligible) {
   `).join('') + (result.estimated ? '<p class="ship-estimate-note">Valores estimados — conecte o SHIPPING_API_ENDPOINT para frete real.</p>' : '');
 }
 
+// Versão clicável das opções de frete — usada no carrinho e no checkout,
+// onde o cliente realmente escolhe qual transportadora/prazo quer usar
+// (não é só informativo).
+function selectableShippingHtml(result, freeShippingEligible, selectedKey, context) {
+  return result.options.map(o => {
+    const key = `${o.name}|${o.company}|${o.price}`;
+    return `
+    <button type="button" class="ship-option ship-option-selectable ${selectedKey === key ? 'selected' : ''}"
+      data-action="pick-shipping-option" data-context="${context}" data-key="${escapeHtml(key)}"
+      data-price="${o.price}" data-name="${escapeHtml(o.name)}" data-company="${escapeHtml(o.company || '')}" data-days="${o.deliveryTime}">
+      ${carrierLogoHtml(o.logoUrl)}
+      <div class="ship-option-info">
+        <b>${o.name}</b>${o.company ? ` <span class="ship-company">· ${o.company}</span>` : ''}
+        <div class="ship-time">${o.deliveryTime} ${o.deliveryTime == 1 ? 'dia útil' : 'dias úteis'}</div>
+      </div>
+      <div class="ship-price">${freeShippingEligible ? '<span class="ship-free">Grátis</span>' : fmtPrice(o.price)}</div>
+      ${selectedKey === key ? `<svg class="ship-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>` : ''}
+    </button>
+  `;
+  }).join('') + (result.estimated ? '<p class="ship-estimate-note">Valores estimados — conecte o SHIPPING_API_ENDPOINT para frete real.</p>' : '');
+}
+
 // Catálogo de estilos exibido ao cliente. O "id" tem que bater com a chave
 // correspondente no objeto STYLE_PROMPTS do backend (cloudflare-worker.js) —
 // é lá que entram os prompts reais que você vai enviar.
@@ -1879,6 +1907,11 @@ const State = {
   checkoutBuyerInfo: null,
   checkoutManualAddress: null,
   cartShippingEstimate: null,
+  cartShippingOptions: null,
+  cartSelectedShippingKey: null,
+  checkoutShippingOptions: null,
+  checkoutSelectedShippingKey: null,
+  checkoutSelectedShipping: null,
   orders: JSON.parse(localStorage.getItem('mobu_orders') || '[]'),
   accountTab: 'perfil',
   editingAddressId: null,
@@ -3313,12 +3346,36 @@ async function runCartShippingEstimate(cepRaw) {
   try {
     const result = await fetchShippingOptions(cepRaw, pkg);
     if (!result.options || !result.options.length) { res.innerHTML = '<span style="color:var(--gray)">Não encontramos frete pra esse CEP.</span>'; return; }
-    State.cartShippingEstimate = result.options[0].price;
-    res.innerHTML = shippingResultHtml(result, cartSubtotal() >= 199);
+    State.cartShippingOptions = result;
+    if (!State.cartSelectedShippingKey) State.cartSelectedShippingKey = `${result.options[0].name}|${result.options[0].company}|${result.options[0].price}`;
+    State.cartShippingEstimate = result.options.find(o => `${o.name}|${o.company}|${o.price}` === State.cartSelectedShippingKey)?.price ?? result.options[0].price;
+    res.innerHTML = selectableShippingHtml(result, cartSubtotal() >= 199, State.cartSelectedShippingKey, 'cart');
     updateCartTotalDisplay();
   } catch (e) {
     console.error(e);
     res.innerHTML = '<span style="color:var(--red)">Não foi possível calcular agora.</span>';
+  }
+}
+async function loadCheckoutShippingOptions(cepRaw) {
+  const res = document.getElementById('checkout-shipping-result');
+  if (!res) return;
+  if (cepRaw.length !== 8) return;
+  const pkg = aggregateCartPackage();
+  if (!pkg) { res.innerHTML = '<p class="account-empty-hint">Frete sob consulta pra esses itens — fale conosco pelo WhatsApp.</p>'; return; }
+  res.innerHTML = '<div class="ship-loading">Calculando...</div>';
+  try {
+    const result = await fetchShippingOptions(cepRaw, pkg);
+    if (!result.options || !result.options.length) { res.innerHTML = '<p class="account-empty-hint">Não encontramos frete pra esse CEP.</p>'; return; }
+    State.checkoutShippingOptions = result;
+    if (!State.checkoutSelectedShippingKey) {
+      const first = result.options[0];
+      State.checkoutSelectedShippingKey = `${first.name}|${first.company}|${first.price}`;
+      State.checkoutSelectedShipping = { name: first.name, company: first.company, price: first.price, deliveryTime: first.deliveryTime };
+    }
+    res.innerHTML = selectableShippingHtml(result, cartSubtotal() >= 199, State.checkoutSelectedShippingKey, 'checkout');
+  } catch (e) {
+    console.error(e);
+    res.innerHTML = '<p class="account-empty-hint" style="color:var(--red)">Não foi possível calcular o frete agora.</p>';
   }
 }
 function updateCartTotalDisplay() {
@@ -3425,6 +3482,9 @@ function renderCheckout() {
   State.checkoutSelectedCardId = null;
   State.checkoutBuyerInfo = null;
   State.checkoutManualAddress = null;
+  State.checkoutShippingOptions = null;
+  State.checkoutSelectedShippingKey = null;
+  State.checkoutSelectedShipping = null;
   State.activePayTab = State.paymentPref || 'pix';
   const el = document.getElementById('view-checkout');
   el.innerHTML = `
@@ -3492,11 +3552,15 @@ function renderCheckoutStep() {
           `).join('')}
         </div>
         <button class="link-btn" data-action="checkout-manual-address">+ Usar outro endereço</button>
+        <h3 style="font-size:15px;margin:20px 0 12px;">Forma de envio</h3>
+        <div id="checkout-shipping-result"><div class="ship-loading">Calculando frete...</div></div>
         <div style="display:flex;gap:10px;margin-top:20px;">
           <button class="btn btn-outline" data-action="checkout-back">Voltar</button>
           <button class="btn btn-primary" style="flex:1;min-width:0;" data-action="checkout-next">Continuar para pagamento</button>
         </div>
       `;
+      const selAddr = State.addresses.find(a => a.id === State.checkoutUseAddressId);
+      if (selAddr) loadCheckoutShippingOptions(selAddr.cep.replace(/\D/g, ''));
       return;
     }
     content.innerHTML = `
@@ -3512,17 +3576,20 @@ function renderCheckoutStep() {
         <div class="form-field full"><label>Endereço</label><input type="text" id="ck-address" placeholder="Rua, número, bairro"></div>
         <div class="form-field full"><label>Complemento (opcional)</label><input type="text" id="ck-comp" placeholder="Apto, bloco, referência"></div>
       </div>
-      <div style="display:flex;gap:10px;">
+      <h3 style="font-size:15px;margin:16px 0 12px;">Forma de envio</h3>
+      <div id="checkout-shipping-result"><p class="account-empty-hint">Digite um CEP válido acima pra ver as opções.</p></div>
+      <div style="display:flex;gap:10px;margin-top:12px;">
         <button class="btn btn-outline" data-action="checkout-back">Voltar</button>
         <button class="btn btn-primary" data-action="checkout-next" style="flex:1;min-width:0;">Continuar para pagamento</button>
       </div>
     `;
-    attachCepLookup('ck-cep', (data) => {
+    attachCepLookup('ck-cep', (data, clean) => {
       qs('#ck-city').value = `${data.city} / ${data.uf}`;
       const addrField = qs('#ck-address');
       if (!addrField.value.trim()) addrField.value = data.street + (data.neighborhood ? ', ' + data.neighborhood : '');
       const hint = document.getElementById('ck-cep-hint');
       if (hint) { hint.textContent = '✓ Endereço encontrado'; hint.classList.remove('is-error'); }
+      loadCheckoutShippingOptions(clean);
     }, (msg) => {
       const hint = document.getElementById('ck-cep-hint');
       if (hint) { hint.textContent = msg; hint.classList.add('is-error'); }
@@ -4113,6 +4180,23 @@ document.addEventListener('click', async (e) => {
     case 'cart-dec': { const it = State.cart.find(i => i.key === t.dataset.key); setQty(t.dataset.key, it.qty - 1); break; }
     case 'cart-remove': removeFromCart(t.dataset.key); break;
 
+    case 'pick-shipping-option': {
+      const key = t.dataset.key;
+      const option = { name: t.dataset.name, company: t.dataset.company, price: parseFloat(t.dataset.price), deliveryTime: parseInt(t.dataset.days, 10) };
+      if (t.dataset.context === 'cart') {
+        State.cartSelectedShippingKey = key;
+        State.cartShippingEstimate = option.price;
+        const res = document.getElementById('cart-ship-result');
+        if (res && State.cartShippingOptions) res.innerHTML = selectableShippingHtml(State.cartShippingOptions, cartSubtotal() >= 199, key, 'cart');
+        updateCartTotalDisplay();
+      } else {
+        State.checkoutSelectedShippingKey = key;
+        State.checkoutSelectedShipping = option;
+        const res = document.getElementById('checkout-shipping-result');
+        if (res && State.checkoutShippingOptions) res.innerHTML = selectableShippingHtml(State.checkoutShippingOptions, cartSubtotal() >= 199, key, 'checkout');
+      }
+      break;
+    }
     case 'calc-cart-cep': {
       const cepRaw = qs('#cart-cep-input').value.replace(/\D/g, '');
       runCartShippingEstimate(cepRaw);
@@ -4145,18 +4229,25 @@ document.addEventListener('click', async (e) => {
           complement: qs('#ck-comp').value.trim(),
         };
       }
+      if (State.checkoutStep === 2 && !State.checkoutSelectedShipping) { toast('Escolha uma forma de envio', 'error'); break; }
       State.checkoutStep = Math.min(3, State.checkoutStep + 1);
       renderCheckoutStep();
       break;
     }
     case 'checkout-back': stopPixPolling(); State.checkoutStep = Math.max(1, State.checkoutStep - 1); renderCheckoutStep(); break;
-    case 'pick-checkout-address': State.checkoutUseAddressId = t.dataset.id; renderCheckoutStep(); break;
+    case 'pick-checkout-address':
+      State.checkoutUseAddressId = t.dataset.id;
+      State.checkoutSelectedShippingKey = null;
+      State.checkoutSelectedShipping = null;
+      renderCheckoutStep();
+      break;
     case 'checkout-manual-address': State.checkoutUseAddressId = 'manual'; renderCheckoutStep(); break;
     case 'checkout-use-saved-address': State.checkoutUseAddressId = null; renderCheckoutStep(); break;
     case 'checkout-finish': {
       const orderNumber = 'MOBU-' + Math.floor(10000 + Math.random() * 89999);
       const items = State.cart.map(i => ({ name: i.name, price: i.price, qty: i.qty }));
-      const total = cartSubtotal();
+      const shippingCost = cartSubtotal() >= 199 ? 0 : (State.checkoutSelectedShipping?.price || 0);
+      const total = cartSubtotal() + shippingCost;
       const shippingAddress = getCheckoutShippingAddressSnapshot();
 
       if (State.activePayTab === 'cartao') {
