@@ -3312,10 +3312,9 @@ async function runCartShippingEstimate(cepRaw) {
   res.classList.add('show');
   try {
     const result = await fetchShippingOptions(cepRaw, pkg);
-    const cheapest = result.options?.[0];
-    if (!cheapest) { res.innerHTML = '<span style="color:var(--gray)">Não encontramos frete pra esse CEP.</span>'; return; }
-    State.cartShippingEstimate = cheapest.price;
-    res.innerHTML = `<div class="cart-ship-found">📦 A partir de <b>${cartSubtotal() >= 199 ? 'Grátis' : fmtPrice(cheapest.price)}</b> — ${cheapest.name} (${cheapest.deliveryTime} dias úteis)</div>`;
+    if (!result.options || !result.options.length) { res.innerHTML = '<span style="color:var(--gray)">Não encontramos frete pra esse CEP.</span>'; return; }
+    State.cartShippingEstimate = result.options[0].price;
+    res.innerHTML = shippingResultHtml(result, cartSubtotal() >= 199);
     updateCartTotalDisplay();
   } catch (e) {
     console.error(e);
