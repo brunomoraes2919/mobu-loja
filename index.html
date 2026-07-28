@@ -375,7 +375,17 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
   border-top:1px solid var(--border-dark);padding-top:20px;display:flex;justify-content:space-between;
   flex-wrap:wrap;gap:10px;font-size:11.5px;color:var(--gray-light);
 }
+.footer-legal-links a{color:var(--gray-light);}
+.footer-legal-links a:hover{color:#fff;}
 @media (max-width:900px){.footer-grid{grid-template-columns:1fr 1fr;}}
+
+.legal-page{font-size:14px;line-height:1.7;color:#333;}
+.legal-page h3{font-family:var(--font-display);font-size:16px;margin:28px 0 10px;color:var(--black);}
+.legal-page h3:first-of-type{margin-top:8px;}
+.legal-page p{margin-bottom:10px;}
+.legal-page ul{margin:0 0 14px;padding-left:20px;}
+.legal-page ul li{margin-bottom:6px;}
+.legal-updated{font-size:12px;color:var(--gray-light);font-style:italic;margin-bottom:22px;}
 
 /* whatsapp float */
 .wa-float{
@@ -1022,6 +1032,8 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
           <li><a href="#">Prazo de entrega</a></li>
           <li><a href="#">Formas de pagamento</a></li>
           <li><a href="#">Fale conosco</a></li>
+          <li><a href="#" data-action="go-privacy">Política de Privacidade</a></li>
+          <li><a href="#" data-action="go-terms">Termos de Uso</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -1038,6 +1050,7 @@ footer{background:var(--black);color:var(--gray-faint);padding:56px 0 22px;font-
     </div>
     <div class="footer-bottom">
       <span>© 2026 MOBU Impressão 3D — CNPJ 00.000.000/0001-00 (exemplo) — Cuiabá/MT</span>
+      <span class="footer-legal-links"><a href="#" data-action="go-privacy">Privacidade</a> · <a href="#" data-action="go-terms">Termos de Uso</a></span>
       <span>Feito com impressão 3D e um pouco de código.</span>
     </div>
   </div>
@@ -2327,7 +2340,7 @@ function navigate(view, params) {
   });
   // A barra de categorias do celular só faz sentido em telas de navegação
   // do catálogo — em login/conta/checkout ela só polui a tela.
-  const NAV_HIDDEN_VIEWS = ['login', 'account', 'checkout', 'success', 'auth-status'];
+  const NAV_HIDDEN_VIEWS = ['login', 'account', 'checkout', 'success', 'auth-status', 'privacy', 'terms'];
   const navMobile = document.getElementById('nav-cats-mobile');
   if (navMobile) navMobile.style.display = NAV_HIDDEN_VIEWS.includes(view) ? 'none' : '';
 }
@@ -2632,6 +2645,133 @@ function renderCatalogGrid() {
 }
 
 /* ===================== FAVORITOS ===================== */
+function legalPageWrapper(title, bodyHtml) {
+  return `
+    <div class="page-title-band"><div class="container"><h1>${title}</h1></div></div>
+    <div class="container legal-page" style="max-width:760px;padding:36px 32px 80px;">
+      ${bodyHtml}
+    </div>
+  `;
+}
+
+function renderPrivacy() {
+  const el = document.getElementById('view-privacy');
+  el.innerHTML = legalPageWrapper('Política de Privacidade', `
+    <p class="legal-updated">Última atualização: ${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
+
+    <p>A MOBU Impressão 3D ("MOBU", "nós") respeita sua privacidade e é comprometida em proteger os dados pessoais de quem visita e compra em nosso site, em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018 — LGPD). Esta política explica quais dados coletamos, por quê, e quais direitos você tem sobre eles.</p>
+
+    <h3>1. Quais dados coletamos</h3>
+    <ul>
+      <li><b>Dados de cadastro:</b> nome completo, e-mail, telefone e CPF, quando você cria uma conta ou finaliza uma compra.</li>
+      <li><b>Endereço:</b> ao salvar um endereço de entrega ou finalizar um pedido.</li>
+      <li><b>Dados de pagamento:</b> processamos pagamentos através do Mercado Pago. <b>Nunca armazenamos o número completo do seu cartão nem o código de segurança (CVV)</b> — guardamos apenas uma referência segura (token) gerada pelo próprio Mercado Pago, junto com a bandeira e os últimos 4 dígitos, só para exibição.</li>
+      <li><b>Fotos enviadas para o Studio de IA:</b> se você usa a ferramenta de criação de miniatura personalizada, as fotos que você envia são usadas exclusivamente para gerar a prévia da sua peça.</li>
+      <li><b>Pedidos, avaliações e perguntas:</b> histórico de compras, e o conteúdo (incluindo fotos) que você opta por publicar em avaliações de produtos ou perguntas públicas.</li>
+      <li><b>Dados de navegação:</b> usamos armazenamento local do navegador (localStorage) para lembrar itens do carrinho e favoritos, mesmo sem login.</li>
+    </ul>
+
+    <h3>2. Para que usamos seus dados</h3>
+    <ul>
+      <li>Processar e entregar seus pedidos, incluindo cálculo de frete e emissão de nota/comprovante.</li>
+      <li>Processar pagamentos com segurança através do Mercado Pago.</li>
+      <li>Gerar as prévias de miniatura personalizada solicitadas por você.</li>
+      <li>Enviar e-mails transacionais (confirmação de cadastro, recuperação de senha, status do pedido).</li>
+      <li>Prestar atendimento e responder dúvidas.</li>
+      <li>Exibir avaliações e perguntas que você optar por publicar publicamente.</li>
+    </ul>
+
+    <h3>3. Com quem compartilhamos seus dados</h3>
+    <p>Para operar a loja, compartilhamos dados estritamente necessários com estes prestadores de serviço, todos contratados para processar dados em nosso nome:</p>
+    <ul>
+      <li><b>Supabase</b> — banco de dados e autenticação de conta.</li>
+      <li><b>Mercado Pago</b> — processamento de pagamentos (cartão, Pix e boleto).</li>
+      <li><b>SuperFrete e Melhor Envio</b> — cálculo de frete e postagem dos pedidos.</li>
+      <li><b>Resend</b> — envio de e-mails transacionais.</li>
+      <li><b>Google (Gemini)</b> — geração das imagens de miniatura personalizada a partir das fotos enviadas por você.</li>
+    </ul>
+    <p>Não vendemos nem alugamos seus dados pessoais a terceiros para fins de marketing.</p>
+
+    <h3>4. Base legal para o tratamento</h3>
+    <p>Tratamos seus dados com base na execução do contrato de compra e venda (Art. 7º, V, LGPD), no cumprimento de obrigação legal ou regulatória (ex: emissão fiscal), no seu consentimento (ex: ao optar por publicar uma avaliação com foto), e em nosso legítimo interesse em prevenir fraude e melhorar o site.</p>
+
+    <h3>5. Seus direitos como titular dos dados</h3>
+    <p>Conforme a LGPD, você pode solicitar a qualquer momento:</p>
+    <ul>
+      <li>Confirmação de que tratamos seus dados, e acesso a eles.</li>
+      <li>Correção de dados incompletos, inexatos ou desatualizados.</li>
+      <li>Anonimização, bloqueio ou eliminação de dados desnecessários.</li>
+      <li>Portabilidade dos dados a outro fornecedor.</li>
+      <li>Eliminação dos dados tratados com seu consentimento.</li>
+      <li>Revogação do consentimento a qualquer momento.</li>
+    </ul>
+    <p>Muitas dessas ações já podem ser feitas diretamente em "Minha conta" (editar perfil, remover endereços e cartões salvos). Para as demais, entre em contato pelo canal abaixo.</p>
+
+    <h3>6. Segurança</h3>
+    <p>Usamos conexão criptografada (HTTPS) em todo o site, controle de acesso por linha (Row Level Security) no banco de dados — garantindo que cada cliente só acesse os próprios dados — e nunca armazenamos senha nem número de cartão em texto legível.</p>
+
+    <h3>7. Retenção de dados</h3>
+    <p>Mantemos seus dados enquanto sua conta estiver ativa ou pelo período necessário para cumprir obrigações legais (ex: fiscais). Você pode solicitar a exclusão da sua conta e dos dados associados a qualquer momento.</p>
+
+    <h3>8. Cookies e armazenamento local</h3>
+    <p>Usamos armazenamento local do navegador para lembrar o conteúdo do seu carrinho e sua lista de favoritos. Isso não é compartilhado com terceiros para fins de publicidade.</p>
+
+    <h3>9. Menores de idade</h3>
+    <p>Nossos serviços não são direcionados a menores de 18 anos. Não coletamos intencionalmente dados de crianças ou adolescentes sem o consentimento de um responsável legal.</p>
+
+    <h3>10. Alterações nesta política</h3>
+    <p>Podemos atualizar esta política periodicamente. A data da última atualização sempre aparece no topo desta página.</p>
+
+    <h3>11. Contato</h3>
+    <p>Para dúvidas sobre esta política ou para exercer seus direitos como titular de dados, fale conosco pelo WhatsApp ou pelo e-mail de contato disponível no rodapé do site.</p>
+  `);
+}
+
+function renderTerms() {
+  const el = document.getElementById('view-terms');
+  el.innerHTML = legalPageWrapper('Termos de Uso', `
+    <p class="legal-updated">Última atualização: ${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
+
+    <p>Estes Termos de Uso regem o uso do site da MOBU Impressão 3D e a compra de produtos personalizados impressos em 3D. Ao criar uma conta ou finalizar uma compra, você concorda com estes termos.</p>
+
+    <h3>1. Sobre a MOBU</h3>
+    <p>A MOBU é uma empresa de impressão 3D sob encomenda, sediada em Cuiabá/MT, que produz peças personalizadas (chaveiros, miniaturas, decoração, organização e peças técnicas) a partir de arquivos próprios ou de modelos gerados com auxílio de inteligência artificial.</p>
+
+    <h3>2. Cadastro e conta</h3>
+    <p>Você pode navegar e comprar como visitante, ou criar uma conta (por e-mail/senha ou login com Google) para salvar endereços, formas de pagamento e acompanhar pedidos. Você é responsável por manter a confidencialidade da sua senha e por todas as atividades realizadas na sua conta.</p>
+
+    <h3>3. Pedidos, preços e pagamento</h3>
+    <p>Os preços exibidos incluem os impostos aplicáveis e podem ser alterados sem aviso prévio, não afetando pedidos já confirmados. O pagamento é processado com segurança pelo Mercado Pago (Pix, cartão de crédito ou boleto). O pedido só é confirmado após a aprovação do pagamento (no caso de Pix e boleto, a compensação pode levar até alguns dias úteis).</p>
+
+    <h3>4. Produtos sob encomenda e personalização</h3>
+    <p>Nossos produtos são impressos individualmente após a confirmação do pedido, incluindo peças com nome, cor ou modelo escolhidos por você, e miniaturas geradas a partir de fotos enviadas à nossa ferramenta de IA. Por serem produzidos especificamente para você, o prazo de produção é informado na página de cada produto antes da compra.</p>
+
+    <h3>5. Frete e prazos de entrega</h3>
+    <p>O frete é calculado em tempo real com base no seu CEP, através dos Correios, Jadlog ou outras transportadoras parceiras. Os prazos exibidos são estimativas fornecidas pelas transportadoras e começam a contar após a peça ser produzida e postada.</p>
+
+    <h3>6. Trocas, devoluções e direito de arrependimento</h3>
+    <p>Conforme o Código de Defesa do Consumidor (Art. 49), você tem até 7 dias corridos após o recebimento para desistir da compra, caso o produto <b>não</b> tenha sido personalizado a seu pedido (nome, texto ou imagem específicos). Para produtos personalizados, esse direito de arrependimento pode não se aplicar, exatamente por serem fabricados sob medida e não poderem ser revendidos — mas produtos que chegarem com defeito de fabricação têm garantia de troca ou reparo em qualquer caso. Entre em contato pelo WhatsApp para iniciar uma troca ou devolução.</p>
+
+    <h3>7. Conteúdo enviado por você (fotos e avaliações)</h3>
+    <p>Ao enviar uma foto para a ferramenta de criação de miniatura, você declara ter os direitos necessários sobre a imagem (ser a pessoa retratada, ou ter autorização de quem é) e autoriza o uso dessa foto exclusivamente para gerar a prévia e produzir sua peça. Ao publicar uma avaliação ou pergunta no site, você concorda que esse conteúdo (incluindo fotos anexadas) fique visível publicamente para outros visitantes, e concede à MOBU o direito de exibi-lo no site.</p>
+
+    <h3>8. Propriedade intelectual</h3>
+    <p>O design do site, a marca MOBU e os modelos 3D próprios são de propriedade da MOBU. Marcas e personagens de terceiros eventualmente mencionados pertencem aos seus respectivos donos.</p>
+
+    <h3>9. Limitação de responsabilidade</h3>
+    <p>Fazemos o possível para que as imagens geradas por IA e o configurador 3D representem fielmente o produto final, mas pequenas variações de cor, textura ou detalhe podem ocorrer entre a prévia digital e a peça impressa física.</p>
+
+    <h3>10. Alterações nestes termos</h3>
+    <p>Podemos atualizar estes termos periodicamente. A data da última atualização sempre aparece no topo desta página. O uso continuado do site após uma alteração representa sua concordância com os novos termos.</p>
+
+    <h3>11. Legislação aplicável e foro</h3>
+    <p>Estes termos são regidos pela legislação brasileira. Fica eleito o foro da comarca de Cuiabá/MT para dirimir eventuais controvérsias, com renúncia a qualquer outro, por mais privilegiado que seja.</p>
+
+    <h3>12. Contato</h3>
+    <p>Dúvidas sobre estes termos podem ser esclarecidas pelo WhatsApp ou e-mail de contato disponível no rodapé do site.</p>
+  `);
+}
+
 function renderFavoritos() {
   const el = document.getElementById('view-favoritos');
   const list = PRODUCTS.filter(p => State.wishlist.includes(p.id));
@@ -3773,6 +3913,7 @@ const RENDERERS = {
   home: renderHome, catalog: renderCatalog, product: renderProduct,
   cart: renderCart, checkout: renderCheckout, success: renderSuccess, favoritos: renderFavoritos,
   'ai-studio': renderAiStudio, login: renderLogin, account: renderAccount, 'auth-status': renderAuthStatus,
+  privacy: renderPrivacy, terms: renderTerms,
 };
 
 document.addEventListener('click', async (e) => {
@@ -3788,6 +3929,8 @@ document.addEventListener('click', async (e) => {
 
   switch (action) {
     case 'go-home': navigate('home'); break;
+    case 'go-privacy': navigate('privacy'); break;
+    case 'go-terms': navigate('terms'); break;
     case 'go-catalog': navigate('catalog', { cat: t.dataset.cat || 'all' }); break;
     case 'go-product': navigate('product', { id: t.dataset.id }); break;
     case 'go-cart': navigate('cart'); closeDrawer(); break;
@@ -4519,7 +4662,7 @@ function boot() {
 
   // build views container
   const app = document.getElementById('app');
-  app.innerHTML = ['home','catalog','product','cart','checkout','success','favoritos','ai-studio','login','account','auth-status']
+  app.innerHTML = ['home','catalog','product','cart','checkout','success','favoritos','ai-studio','login','account','auth-status','privacy','terms']
     .map(v => `<div class="view" id="view-${v}"></div>`).join('');
 
   navigate('home');
