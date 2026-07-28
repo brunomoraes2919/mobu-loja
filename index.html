@@ -1941,7 +1941,41 @@ const State = {
   lastOrder: null,
 };
 
-function saveCart() { localStorage.setItem('mobu_cart', JSON.stringify(State.cart)); updateHeaderCounts(); }
+function saveCart() {
+  localStorage.setItem('mobu_cart', JSON.stringify(State.cart));
+  updateHeaderCounts();
+  syncAbandonedCart();
+}
+
+// Guarda o carrinho no banco (só pra quem está logado) pra podermos mandar
+// um lembrete por e-mail depois, se a pessoa não voltar pra finalizar.
+// Com espera de 1.5s pra não disparar uma chamada a cada clique de +/-.
+let abandonedCartSyncTimer = null;
+function syncAbandonedCart() {
+  if (!isLoggedIn() || !isSupabaseConfigured()) return;
+  clearTimeout(abandonedCartSyncTimer);
+  abandonedCartSyncTimer = setTimeout(async () => {
+    try {
+      if (!State.cart.length) {
+        await supabaseClient.from('abandoned_carts').delete().eq('user_id', State.user.id);
+        return;
+      }
+      const items = State.cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty }));
+      await supabaseClient.from('abandoned_carts').upsert(
+        { user_id: State.user.id, items, updated_at: new Date().toISOString(), reminder_sent_at: null },
+        { onConflict: 'user_id' }
+      );
+    } catch (e) {
+      console.error('Falha ao sincronizar carrinho salvo:', e);
+    }
+  }, 1500);
+}
+async function clearAbandonedCart() {
+  if (!isLoggedIn() || !isSupabaseConfigured()) return;
+  clearTimeout(abandonedCartSyncTimer);
+  try { await supabaseClient.from('abandoned_carts').delete().eq('user_id', State.user.id); }
+  catch (e) { console.error(e); }
+}
 function saveWishlist() { localStorage.setItem('mobu_wishlist', JSON.stringify(State.wishlist)); updateHeaderCounts(); }
 
 /* -------------------------------------------------------------------------
